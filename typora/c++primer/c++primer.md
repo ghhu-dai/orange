@@ -627,7 +627,7 @@ string s = to_string(i); // 将整数 i 转换为字符 表示
 double d = stod(s); // 将字符s转换为浮点数
 ```
 
----
+
 
 
 
@@ -717,8 +717,225 @@ q.emplace(args);
 
 独立于任何特定的容器
 
+
+
+
+
 ### 10.1 概述
+
+
 
 头文件：`algorithm`,`numeric`,后者是数值泛型算法
 
+迭代器令算法不依赖于容器，但算法依赖于元素类型的操作
+
+算法不会改变底层容器的**大小**
+
+
+
+
+
+### 10.2 初识泛型算法
+
+
+
+大多数标准库算法都对一个范围内的元素进行操作，用两个迭代器表示 范围
+
+
+
+
+
+#### 10.2.1 	只读算法
+
+
+
+```cpp
+// 如，find ,count, accumulate（定义在numeric头文件 中）,equal
+
+accumulate: // 求范围内的和
+    
+	int sum = accumulate(vec.cbegin(),vec.cend(),0); // 求和，和的初值设定为0
+	// accumulate的第三个参数的类型决定了函数中使用哪个加法运算符以及返回值 类型
+
+	string sum = accumulate(v.cbegin(),v,cend(),string(""));
+	// string定义了+，字符串字面值 const char * 没有+运算符，所以不能用 "" 替换 string("")
+
+equal: // 确定两个序列对应元素是否相同 
+    
+	equal(roster1.cbegin(),roster1.cend(),roster2.cbegin());
+	// 只接受单一迭代器来表示 第二个序列的算法，都假定第二个序列至少与第一个序列一样长
+	
+
+```
+
+
+
+
+
+#### 10.2.2 写容器元素的算法
+
+
+
+```cpp
+// 如：fill
+fill(vec.begin(),vec.end(),0); // 将范围内的元素都重置为0
+```
+
+算法不检查写操作
+
+```cpp
+// fill_n(dest,n,val); 假定dest指向一个元素，而从这开始的元素至少包含n个元素
+vector<int> vec; // 空容器
+fill_n(vec.begin(),vec.size(),0); // 将所有元素重置为0
+fill_n(vec.begin(),10,0); // 错误，容器中没有这么多的元素
+```
+
+
+
+关于`back_inserter`
+
+头文件：`iterator`
+
+```cpp
+vector<int> vec; // 空向量
+fill_n(back_inserter(vec),10,0); // 正确，添加10个元素到vec
+// 相当于每次赋值都会在vec上调用push_back
+```
+
+
+
+拷贝算法：
+
+```cpp
+// copy
+int a1[10] = {0,1,2,3,4,5,6,7,8,9};
+int a2[sizeof(a1)/sizeof(*a1)];
+auto ret = copy(begin(a1),end(a1),a2); // ret指向拷贝到a2尾元素之后的位置
+
+// replace
+replace(ilst.begin(),ilst.end(), 0, 42); // 将范围内的0换为42
+
+// replace_copy
+replace_copy(ilst.cbegin(),ilst.cend(),back_inserter(ivec), 0, 42);
+// 此调用后，ilst并未改变，ivec包含ilst 的一分拷贝，不过原来在ilst中值 为0 的元素在ivec中变为42
+```
+
+
+
+
+
+
+
+#### 10.2.3　重排容器元素的算法
+
+
+
+`sort`:利用元素类型的`<`运算符实现排序                 
+
+```cpp
+// 利用sort,unique,vector.erase消除重复单词
+
+void elimDups(vector<string> &words){
+    // 按字典序排序words，以便查找 重复单词
+	sort(words.begin(),words.end());
+    // 重排输入范围，全每个单词只出现一次，排列在范围的前部，返回指向不重复区域之后 的一个位置的迭代器
+    auto end_unique = unique(words.begin(),words.end());
+    // 使用向量操作erase删除数组 ,erase删除元素不会减小和容量
+    words.erase(end_unique,words.end());
+}
+```
+
  
+
+<img src="D:\A_Git_learn\typora\c++primer\img\unique_before.png" alt="unidque前" style="zoom:68%;" />
+
+`unique`后
+
+<img src="D:\A_Git_learn\typora\c++primer\img\unique_after.png" alt="d" style="zoom:68%;" />
+
+
+
+
+
+
+
+### 10.3 定制操作
+
+#### 10.3.1 向算法传递函数 
+
+谓词：一元谓词，二元谓词
+
+```cpp
+bool isShorter(const string&s1, const string &s2){ // 这是一个二元谓词
+    return s1.size()<s2.size();
+}
+
+// 按单词长短来排序
+sort(words.begin(),words.end(),isShorter);
+```
+
+稳定排序算法
+
+```cpp
+// stable_sort 可以维持原有的相对顺序
+
+elimDups(words); // 将words按字典序重排，并消除重复单词
+
+stable_sort(words.begin(),words.end(),isShorter);
+
+for(const auto &s :words){ // 无须拷贝字符串
+    cout<<s<<" ";
+}
+cout<<endl;
+```
+
+
+
+#### 10.3.2 lambda表达式
+
+使用谓词无法解决复杂排序问题时，可用`lambda`表达式
+
+```cpp
+// lambda 表达式可以理解为一个未命名的内联函数 ，有一个捕获列表，一个返回类型（必须是尾置返回），一个参数列表，一个函数体，与函数不同的是它可以定义在函数内部,
+[capture list](parameter list)-> return type {function body}
+
+// 其中[parameter list] -> return type可以省略
+auto f = []{ return 42 };
+cout<< f() <<endl; // 调用方式同普通 函数 一样
+
+// 向lambda传递参数，因为lambda不能有默认参数，实参形参数目相等
+[]()
+
+
+```
+
+
+
+```cpp
+// 定义函数 biggies:求大于等于一个给定长度的单词有多少，并输出 
+
+void biggies(vector<string> &words,vector<string>::size_type sz){
+    // 将words按字典序排序 ，删除重复单词
+    elimDups(words); 
+    
+    // 按长度排序 ，长度相同的按字典序排序 
+    stable_sort(words.begin(),words.end(),isShorter); 
+    
+    // 获取 一个迭代器，指向第一个满足size()>=sz的元素
+    // 利用find_if(iter1,iter2,一元谓词)，+ lambda表达式
+    
+    // 计算满足size>=sz的数目
+    
+    // 打印长度大于等于给定值 的单词，每个单词后面接一个空格
+    
+}
+```
+
+
+
+
+
+
+
+
+

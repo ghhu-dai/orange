@@ -1,4 +1,5 @@
 # 常用操作
+
 ## 拉取与配置
 * 从git服务器拉取代码`git clone https:……`
 * 配置开发者用户名和邮箱`git config user.name/user.email  ..`
@@ -19,7 +20,7 @@
 ---
 ## 远程相关
 * 将本地代码推送到服务器`git push origin daily/0.0.1`
-   
+  
    * origin指代的是当前的git服务器地址（远程仓库地址）
    
 * `remote`链接
@@ -50,3 +51,22 @@ demo.html
 build/
 // 则说明Git将忽略demo.html文件和build/目录
 ```
+
+---
+
+
+
+
+
+# 问题：
+
+## 1. `github`文件夹有白色箭头并且不能打开
+
+```bash
+1. 删除文件夹里面的.git文件
+2. git rm --cached filename
+3. git add filename
+4. git commit -m ""
+5. git push origin branch_name
+```
+
