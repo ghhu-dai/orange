@@ -881,7 +881,7 @@ sort(words.begin(),words.end(),isShorter);
 
 elimDups(words); // 将words按字典序重排，并消除重复单词
 
-stable_sort(words.begin(),words.end(),isShorter);
+stable_sort(words.begin(),words.end(),isShorter); // 传递函数没有() 
 
 for(const auto &s :words){ // 无须拷贝字符串
     cout<<s<<" ";
@@ -895,24 +895,28 @@ cout<<endl;
 
 使用谓词无法解决复杂排序问题时，可用`lambda`表达式
 
+关于lambda表达式
+
 ```cpp
 // lambda 表达式可以理解为一个未命名的内联函数 ，有一个捕获列表，一个返回类型（必须是尾置返回），一个参数列表，一个函数体，与函数不同的是它可以定义在函数内部,
 [capture list](parameter list)-> return type {function body}
+// 其中 [parameter list] -> return type 可以省略
 
-// 其中[parameter list] -> return type可以省略
-auto f = []{ return 42 };
+auto f = []{ return 42 }; // 参数列表为空,return type
 cout<< f() <<endl; // 调用方式同普通 函数 一样
 
 // 向lambda传递参数，因为lambda不能有默认参数，实参形参数目相等
-[]()
+
+//使用捕获列表，一个lambda只有在其捕获列表中捕获一个它所在的函数中的局部变量，才能在函数体中使用该变量，lambda可以直接使用static变量和在它所在函数之外声明的名字
+
 
 
 ```
 
-
+例 ：定义函数 biggies:求大于等于一个给定长度的单词有多少，并输出 
 
 ```cpp
-// 定义函数 biggies:求大于等于一个给定长度的单词有多少，并输出 
+
 
 void biggies(vector<string> &words,vector<string>::size_type sz){
     // 将words按字典序排序 ，删除重复单词
@@ -923,19 +927,128 @@ void biggies(vector<string> &words,vector<string>::size_type sz){
     
     // 获取 一个迭代器，指向第一个满足size()>=sz的元素
     // 利用find_if(iter1,iter2,一元谓词)，+ lambda表达式
+    auto wc = find_if(words.begin(),words.end(),[sz](const string &a){
+        return a.size()>=sz;
+    });
     
     // 计算满足size>=sz的数目
+    auto count = words.size()-wc;
     
     // 打印长度大于等于给定值 的单词，每个单词后面接一个空格
+    for_each(wc,words.end(),[](const string &s){
+        cout<<s<<" ";
+    }); // for_each接受一个可调用对象，这里是lambda表达式，对输入范围内的每个元素都调用它
+    cout<<endl;
     
 }
 ```
 
 
 
+#### 10.3.3 lambda捕获和返回
+
+
+
+**值 捕获**：被 捕获的变量是在lambda创建时拷贝，而不是调用时拷贝
+
+**引用 捕获**： 常用于对输入输出 流进行引用捕获
+
+**建议**：少捕获，尽量不要捕获指针或引用
+
+**隐式捕获**：
+
+**可变**`lambda`
+
+```cpp
+// 默认情况下，lambda表达和其函数体是const的，不可修改捕获的值 ，可使用mutable使其可变
+void fcn3{
+    size_t v1 = 42;
+    auto f =[v1]()mutable{
+        return ++val;
+    };
+    v1 = 0;
+    auto j = f(); // j 为43
+}
+```
+
+
+
+指定`lambda`返回类型
+
+```cpp
+transform(vi.begin(), vi.end(), vi.begin(),[](int i)->int{ // 不能推断lambda的返回类型，必须指定
+    if(i<0) return -i;
+    else return i;
+});
+// transform接受三个迭代器，一个可调用对象，前两个迭代器表示输入序列，第三个迭代器表示目的位置，算法对输入序列中每个元素调用可调用对象，并将结果写到目的位置
+```
 
 
 
 
 
+#### 10.3.4 参数绑定
+
+标准库`bind`函数 `auto newCallable = bind(callable,arg_list)`
+
+```cpp
+// 定义check_size
+bool check_size(const string &s, string::size_type sz){
+    return s.size() >= sz;
+}
+
+// 利用bind将
+auto wc = find_if(words.begin(),words.end(),[sz](const sring &a){ return a.size()>=sz });
+// 替换为；
+auto wc = find_if(words.begin(),words.end(),bind(check_size,_1,sz));
+// bind 调用生成一个可调用对象，将check_size第二个参数绑定到sz的值，_1是占位符在args_list的第一个位置，对应check_size第一个参数
+// 这样将二元谓词转换为一元谓词，满足find_if的调用
+```
+
+使用`placeholders`名字
+
+```cpp
+using std::placeholders::_1;
+// 等价于：
+using namespace std::placeholders; // 更全面包含所有名字
+
+
+// bind ， placeholders命令空间都定义在functional头文件中
+```
+
+
+
+`bind`的参数
+
+```cpp
+// g 是一个有两个参数的可调用的对象
+auto g = bind(f,a,b,_2,c,_1);
+// 新的可调用对象将自己的参数作为第三个和第五个参数传递给f，第一二四个参数分别被 绑定到a,b,c上
+
+
+// 用bind重排参数顺序
+sort(words.begin(),words.end(),isShorter);// 单词从短到长排
+sort(words.begin(),words.end(),bind(isShorter,_2,_1)); // 单词从长到短排
+
+// 绑定引用参数：使用标准库ref函数 ,有cref版本，头文件：functional
+// ：默认情况下，bind的非占位符参数以拷贝方式到bind返回的可调用对象
+ostream　&print(ostream &os,const string &s,char c ){
+    return os<<s<<c;
+}
+
+for_each(words.begin(),words.end(),
+         bind(print,ref(os),_1,' ')); // _1表示 在实际调用中其可被容器中的每个元素替代， ' '是print的第三个参数
+```
+
+
+
+
+
+### 10.4 再探迭代器
+
+头文件`iterator`: 
+
+​	`insert iterator`, `stream iterator,` `reverse iterator `,` move iterator`
+
+#### 104.1 插入迭代器
 
