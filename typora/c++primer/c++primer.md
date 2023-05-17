@@ -1052,3 +1052,259 @@ for_each(words.begin(),words.end(),
 
 #### 104.1 插入迭代器
 
+```cpp
+back_inserter;
+front_inserter;
+inserter; // 创建一个使用insert的迭代器，此函数 必须接受第二个参数
+
+```
+
+`inserter`
+
+```cpp
+it = c.insert(it,val);
+++it; // 使it指向本来的元素(即：问题在指定位置前加入)
+// 等价于：
+*it = val; // 如果it是insert生成的迭代器.
+```
+
+`back_inserter`
+
+```cpp
+list<int> lst = {1,2,3,4};
+list<int> lst2 ,lst3; // 空list
+
+// 拷贝完成后lst2包含4，3，2，1
+copy(lst.cbegin(),lst.cend(),front_inserter(lst2));
+
+// 拷贝完成后lst3包含1,2,3,4
+copy(lst.cbegin(),lst.cend(),inserter(lst3,lst3.begin()));
+```
+
+
+
+
+
+#### 10.4.2 `iostream`迭代器
+
+`iostream`类型不是容器
+
+`istream_iterator`：读取输入流
+
+```cpp
+istream_iterator<int> in_iter(cin),eof; // in_iter从cin中读取int，eof是空的istream_iterator，当作尾后迭代器使用
+vector<int> vec(in_iter,eof); 
+
+
+// iostream_iterator前置和后置++,表示从输入流读取下一个值(>>)
+
+
+// 使用算法流操作迭代器，如accumulate
+istream_iterator<int> in(cin),eof;
+cout<<accumulate(in,eof,0)<<endl;
+
+
+// istream_iterator允许使用懒惰求值
+"当将一个istream_iterator绑定到一个流时，标准库并不保证迭代器立即从流读取数据，具体实现可以推迟从流中读取数据 ，直到使用迭代器时才真正读取； 标准库中的实现保证的是，在第一次解引用迭代器之前 ，从流中读取数据的操作已经完成了"
+```
+
+
+
+`ostream_iterator`：向一个输出 流写数据 
+
+```cpp
+ostream_iterator<T> out(os); // out将类型为T的值写到输出流os中
+ostream_iterator<T> out(os,d); // out将类型为T的值写到os中，每个值后面都输出一个d，d是c风格字符串
+
+
+// 用ostream_iterator来输出值 的序列
+
+ostream_iterator<int> out_iter(cout," ");
+
+for(auto e: vec)
+    *out_iter++ = e;
+cout<<endl; 
+// 该循环等价于
+copy(vec.begin(), vec.end(),out_iter);
+cout<<endl;
+```
+
+
+
+使用流迭代器来处理类类型
+
+```cpp
+// 重写书店程序
+istream_iterator<Sales_item> item_iter(cin),eof;
+ostream_iterator<Sales_item> out_iter(out,"\n");
+Sales_item sum = *item_iter++;
+while(item_iter!=eof){
+    if( item_iter->isbn() == sum->isbn() ){
+        sum += *item_iter++;
+    }else{
+        out_iter = sum;
+        sum = *itrm_iter++;
+    }
+}
+out_iter = sum; // 打印最后一组纪录
+```
+
+
+
+
+
+
+
+#### 10.4.3 反向迭代器
+
+只有支持`++`也支持`--`的迭代器才能定义反向迭代器
+
+与算法配合
+
+```cpp
+sort(vec.begin(),vec.end()); // 正常序排序 
+sort(vec.rbegin(),vec.rend()); // 倒序排序
+```
+
+在一个逗号分隔的列表中查找 第一个元素
+
+```cpp
+// 在一个逗号分隔的列表中查找第一个元素
+auto comma = find(line.cbegin(),line.cend(),','); // 返回范围内第一个','的迭代器
+cout<<string(line.cbegin(),comma) << endl;
+
+```
+
+在一个逗号分隔的列表中查找第一个元素
+
+```cpp
+auto rcomma = find(line.cbegin(),line.cend(),','); // 返回范围内最后一个','的迭代器,rcomma也是 一个反向迭代器
+// 错误：将逆序打印输出单词的字符
+cout<<string(line.crbegin(),rcomma)<<endl; // 如：FIRST,MIDDLE,LAST -> TSAL
+
+// 利用reverse_iterator.base成员函数得到正向迭代器
+cout<<string(rcomma.base(),line.cend())<<endl;
+```
+
+
+
+![](.\img\反向迭代器.png){width=50% height=50%}
+
+普通迭代器和反向迭代器反映了左闭合区间：`[line.crbegin(),rcomma)` 和 `[ rcomma.base(),line.cend() )`包含相同的元素范围,所以`rcomma.base()` 和`rcomma`指向不同的元素 
+
+
+
+
+
+
+
+### 10.5 泛型算法结构 
+
+任何算法的最基本的特性是它要求其迭代器提供哪些操作
+
+算法要求的迭代器操作可以分为5个迭代器类别：
+
+| 迭代器类别     | 操作                           |
+| -------------- | ------------------------------ |
+| 输入迭代器     | 只读，不写，单遍扫描，只能递增 |
+| 输出迭代器     | 只写，不读，单遍扫描，只能递增 |
+| 前向迭代器     | 可读写，多遍扫描，只能递增     |
+| 双向迭代器     | 可读写，多遍扫描，可递增 递减  |
+| 随机访问迭代器 | 支持全部操作                   |
+
+
+
+#### 10.5.1 5类迭代器类
+
+。。。
+
+
+
+
+
+#### 10.5.2 算法形参模式
+
+```cpp
+alg(beg,end,other args);
+alg(beg,end,dest,other args);
+alg(beg,end,beg2,other args);
+alg(beg,end,beg2,end2,other args);
+```
+
+
+
+#### 10.5.3 算法命名规范
+
+一些算法使用重载形式传递一个谓词
+
+```cpp
+unique(beg,end); // 使用==运算符比较元素
+unique(beg,end,comp); // 使用comp比较元素
+```
+
+`_if`版本的算法
+
+```cpp
+find(beg,end,val); // 查找输入范围内val第一次出现的位置
+find_if(beg,end,pred); // 查找第一个令pred为真的元素
+```
+
+区分拷贝元素的版本和不拷贝的版本
+
+```cpp
+reverse(beg,end); // 反转输入范围中元素的顺序 
+reverse_copy(beg,end,dest); // 将元素按逆序拷贝到dest（额外目的空间）
+```
+
+```cpp
+remove_if(v1.begin(),v1.end(),[](int i){return i % 2;}); // 删除v1中奇数元素
+remove_copy_if(v1.beg(),v1.end(),back_inserter(v2),[](int i){return i % 2});
+```
+
+
+
+
+
+### 10.6 特定容器算法
+
+对于`list`和`forward_list`应该优先使用成员函数版本的算法而不是通用算法
+
+`list`和`forward_list`成员函数版本的算法
+
+| 这些操作都返回void     |                                                              |
+| ---------------------- | ------------------------------------------------------------ |
+| `lst.merge(lst2)`      | 将lst2的元素合并入`lst`,`lst`,`lst2`的元素都必须是有序的(默认<)，合并后`lst2`为空 |
+| `lst.merge(lst2,comp)` |                                                              |
+| `lst.remove(val)`      | 调用`erase`删除掉与给定值 相等或令一元谓词为真的每个元素     |
+| `lst.remove_if(pred)`  |                                                              |
+| `lst.reverse()`        | 反转链表中的元素                                             |
+| `lst.sort()`           | 使用<或给定比较操作排序元素                                  |
+| `lst.sort(comp)`       |                                                              |
+| `lst.unique()`         | 调用`erase`删除同一个值 的连续拷贝版本1使用==，版本2使用给定的二元谓词 |
+| `lst.unique(pred)`     |                                                              |
+
+`splice`成员（链表特有）
+
+| listt 和 forward_list的splice成员函数 的参数， |                                                              |
+| ---------------------------------------------- | ------------------------------------------------------------ |
+| `list.splice(args)`或`flst.splice_after(args)` |                                                              |
+| `(p,lst2)`                                     | p是一个指向`lst`中元素的迭代器，或一个指向`flst`首前位置的迭代器，函数 将`lst2`的所有元素移动到`lst`中p之前 的位置或是`flst`中p之后的位置，将元素从lst2中删除，lst2的类型必须与lst或flst相同且不能是同一个链表 |
+| `(p,lst2,p2)`                                  | 将p2指向的元素移动到`lst`中或将p2之后 的元素移到到`flst`中，`lst2`可以是`lst`或`flst`相同的链表 |
+| `(p,lst2,b,e)`                                 | b和e必须表示 `lst2`中的合法范围，将给定范围中的元素从 `list2`移到`lst`或`flst`，`lst2`与`lst`或`flst`可以是相同的链表，但p 不能指向给定范围中的元素 |
+
+链特有的操作会改变容器
+
+
+
+
+
+---
+
+
+
+
+
+
+
+## 第11章  关联容器
+

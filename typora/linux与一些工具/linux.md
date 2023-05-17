@@ -10,3 +10,4 @@ $ git consig --global user.email "dai_linux.email"
 
     `ssh-keygen -t rsa -C "dai_linux.email"`
 3. 复制公钥在github中添加即可
+

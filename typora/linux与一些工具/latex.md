@@ -1,19 +1,19 @@
-$r = \ln\frac{P_t}{P_{t-1}}$
 
-# 公式:
+
+# `latex`基础:
 ## 数学模式 ：$
 1. 行内公式： `$ f(x) = a+b $`
 
      $f(x) = a+b $
 
-   
-       
-       
+
+​       
+​       
 2. 行间公式： ` $$ f(x) = a+b $$ `
 
 $$ f(x) = a+b $$
 
-                                                            
+​                                                            
 
 3. 手动编号：`$$ f(x) = a - b \tag{1,1} $$`
 
@@ -43,7 +43,7 @@ $$ 0 \neq 1 \quad x \equiv x \quad 1 = 9 \bmod 2 $$
 ### 向量：
  命令：`\vec`表示向量，`\overrightarrow`表示箭头向右的向量，`\overleftarrow`表示箭头向左的向量
    * `$$\vec{a} + \overrightarrow{AB} + \overleftarrow{DE}$$`
-   $$\vec{a} + \overrightarrow{AB} + \overleftarrow{DE}$$
+      $$\vec{a} + \overrightarrow{AB} + \overleftarrow{DE}$$
 
 ### 积分、极限、求和、乘积
 命令：`\int`表示积分，`\lim`表示极限， `\sum`表示求和，`\prod`表示乘积，`^`、`_`表示上、下限
@@ -59,15 +59,27 @@ $$ x_{1},x_{2},\ldots,x_{5}  \quad x_{1} + x_{2} + \cdots + x_{n} $$
 ### 重音符号
 1. `$ \hat{x} $`
 
-$$ \hat{x} $$
+$$
+\hat{x}
+$$
+
+
 
 2. `$ \bar{x} $`
 
-$$ \bar{x} $$
+$$
+\bar{x}
+$$
+
+
 
 3. `$ \tilde{x} $`
 
-$$ \tilde{x} $$
+$$
+\tilde{x}
+$$
+
+
 
 ### 矩阵
 其采用矩阵环境实现矩阵排列，常用的矩阵环境有matrix、bmatrix[]、vmatrix||、pmatrix()，其区别为在于外面的括号不同
@@ -81,7 +93,20 @@ $$
 $$
 ```
 
+$$
+\begin{bmatrix}
+1&2& \cdots \\
+67&95& \cdots \\
+\vdots & \vdots & \ddots \\
+\end{bmatrix}
+$$
+
+
+
+
+
 ### 希腊字母：
+
 ![图片描述](https://pic1.zhimg.com/v2-da3e717cf670582fbfbdddee33073524_b.jpg)
 
 ### 多选公式
@@ -108,3 +133,12 @@ $$\begin{split}
 ```python
 
 ```
+
+---
+
+
+
+# `markdown`中调用`latex`
+
+键入`$$`回车
+
