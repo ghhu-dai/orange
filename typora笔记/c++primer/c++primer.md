@@ -1308,3 +1308,168 @@ remove_copy_if(v1.beg(),v1.end(),back_inserter(v2),[](int i){return i % 2});
 
 ## 第11章  关联容器
 
+| 关联容器类型         |                                   |
+| -------------------- | --------------------------------- |
+| 按关键字有序保存元素 |                                   |
+| `map`                | 关联数组 ：保存 关键字-值 对      |
+| `set`                | 关键字即值 ：只保存关键字的容器   |
+| `multimap`           | 关键字可重复出现 的`map`          |
+| `multiset`           | 关键字可重复出现 的`set`          |
+| 无序 集合            |                                   |
+| `unordered_map`      | 用哈希函数组织 的`map`            |
+| `unordered_set`      | 用哈希函数 组织 的`set`           |
+| `unordered_multimap` | 哈希组织 的`map`:关键字可重复出现 |
+| `unordered_multiset` | 哈希组织 的`set`:关键字可重复出现 |
+|                      |                                   |
+
+
+
+
+
+###  11.1 使用关联容器
+
+关联数组 ：`map`，通过关键字来查找 值 ，而非 下标
+
+`set`是关键字的简单集合，适合用于查找 值 是否存在
+
+如：作用`map`作单词计数
+
+```cpp
+map<string,size_t> word_count; // string 到 size_t 的空map
+string word;
+while(cin>>word){
+    ++word_count[word]; // 提取word的计数器并加1
+}
+for(const auto &w : word_count) // w 是 pair类型
+    cout<<w.first<<" occurs"<<w.second<<
+    ((w.second>1)?"times":"time")<<endl;
+
+// 如果 word_count[word]不存在，会创建一个新元素word->0
+```
+
+利用`set`忽略常见单词
+
+```cpp
+map<string,size_t> word_count;
+set<string> exclude = {"the","but",...};
+string word;
+while(cin>>word){
+    if(exclude.find(word) == exclude.end()) // 只统计不在exclude中的单词
+        ++word_count[word];
+}
+```
+
+
+
+
+
+### 11.2 关联容器概述
+
+关联容器不支持顺序容器的位置相关的操作，如：`push_front`,`push_back`
+
+#### 11.2.1 定义关联容器
+
+对于`map`,`set`而言，关键字必须 是唯一的，而`multset`,`multmap`允许多个元素有相同的关键字
+
+`{key,value}`
+
+#### 11.2.2 关键字类型的要求
+
+有序类型的关键字类型：具有严格弱序
+
+#### 11.2.3 `pair`类型
+
+头文件：`utility`
+
+```cpp
+make_pair(v1,v2); // 返回一个用v1和v2初始化的pair,pair的类型从v1,v2类型推断
+
+p1 == p2; //当first和second成员分别相等，两个pair相等，相等性判断利用元素的==运算符实现
+p1 != p2;
+```
+
+
+
+
+
+
+
+### 11.3 关联容器操作
+
+| 关联容器的额外类型别名 |                                                              |
+| ---------------------- | ------------------------------------------------------------ |
+| `key_type`             | 此容器类型的关键字类型                                       |
+| `mapped_type`          | 每个关键字关联的类型，只适用于`map`                          |
+| `value_type`           | 对于`set` 与 `key_type`相同<br />对于`map`，为`pair<const key_type, mapped_type>` |
+
+
+
+#### 11.3.1 关联容器迭代器
+
+对`map`解引用的`value_type`是一个`pair`，其中关键字成员的值 是`const`的
+
+`set`的迭代器是`const`的，只能读取元素，不能修改
+
+遍历关联容器，例 ：单词计数程序 
+
+```cpp
+auto map_it = word_count.cbegin();
+while(map_it != word_count.cend()){
+    cout<<map_it->first<<" occurs"<<ma_it->seconde<<" times"<<endl;
+    ++map_it;
+}
+```
+
+关联容器和算法
+
+```cpp
+// 由于关键字是const特性，通常不对关联容器使用泛型算法
+```
+
+
+
+
+
+#### 11.3.2 添加元素
+
+```cpp
+c.insert(p,v);
+c.emplace(p,args);
+
+// 注意：p迭代器作为一个提示表示从哪里开始搜索新元素应该存储的位置
+```
+
+
+
+对`set`添加元素
+
+```cpp
+//insert 两个重载版本 , insert(beg,end)和insert({})
+set<int> set2;
+vector<int> ivec = {2,4,6,8,2,4,6,8};
+set2.insert(ivec.cbegin(),ivec.cend()); // set2有4个元素
+set2.insert({1,3,5,7,1,3,5,7}); // set 有8个元素
+```
+
+向`map`添加元素
+
+```cpp
+word_count.insert({word,1}); // 最简单
+word_count.insert(make_pair(word,1));
+word_count.insert(pair<string,sise_t>(word,1));
+word_count.inset(map<string,size_t>::value_type(word,1)); 
+```
+
+检测`insert`的返回值 ：
+
+​	`insert`/`emplace`的返回值 是一个`pair`，`pair.first`是一个指向具有给定关键字的元素的迭代器，	                 	`pair.second`是一个`bool`值 ，指出元素是否插入成功
+
+​	对于向`multiset`或`multimap`添加元素的情况，无需返回一个`bool`值 
+
+
+
+
+
+#### 11.3.3 删除元素
+
+ 
