@@ -1473,3 +1473,100 @@ word_count.inset(map<string,size_t>::value_type(word,1));
 #### 11.3.3 删除元素
 
  
+
+| 从关联容器删除元素 |                                                              |
+| ------------------ | ------------------------------------------------------------ |
+| `c.erase(K)`       | 从c 中删除关键字为k的元素，返回一个`size_type`值 ，指出删除的元素的数量 |
+| `c.erase(p)`       | 从c中删除迭代器p指定的元素，返回p之后 元素的迭代器           |
+| `c.erase(b,e)`     | 删除迭代器对b,e所表示 范围中的元素，返回e                    |
+
+
+
+#### 11.3.4 `map`的下标操作
+
+`map`和`unordered_map`容器提供了下标运算符和`at`函数 
+
+```cpp
+c[k]; // 返回关键字为k 的元素，若添加一个关键字为k的元素对其进行值 初始化，这与vector很不一样
+c.at(k); // 如果 k还在c中，抛出一个out_of_range异常
+```
+
+<font color = green>注意</font> : 通常情况下，解引用一个迭代器所返回的类型和下标运算符 返回的类型是一样的，但对`map`来说，下标操作返回的是`mapped_type`对象，解引用一个迭代器返回的是`value_type(pair)`对象
+
+
+
+
+
+#### 11.3.5 访问元素
+
+在一个关联容器中查找元素的操作
+
+| 下标和at操作只适用于非`const`和`map`和`unordered_map`   ？ |                                                              |
+| ---------------------------------------------------------- | ------------------------------------------------------------ |
+| `c.find(k)`                                                | 返回一个迭代器，指向第一个关键字为k 的元素，若k不在容器中，则返回尾后迭代器 |
+| `c.count(k)`                                               | 返回关键字等于k的元素的数量 ，对于不允许重复关键字的容器，返回值 永远是0或1 |
+| `lower_bound`，`upper_bound`不适用于无序容器               |                                                              |
+| `c.lower_bound(k)`                                         | 返回一个迭代器，指向第一个关键字不小于k的元素                |
+| `c.upper_bound(k)`                                         | 返回一个迭代器，指向第一个关键字大于k的元素                  |
+|                                                            |                                                              |
+| `c.equal_range(k)`                                         | 返回一个迭代器`pair`，表示 关键字等于k的元素的范围，若k不在，则pair的两个成员均等于`c.end()` |
+
+对`map`使用`find`代替下标操作
+
+​	当只是检查`map`容器中元素是否存在时，用`find`
+
+遍历 某一个关键字所占元素的范围 的三种方法
+
+```cpp
+multimap<string,string> authors;
+string search_item("Alain de Botton"); //要查找 的作者
+
+// 方法1：find+count
+auto entries = authors.count(search_item); // 元素的数量 
+auto iter = authors.find(sarch_item); // 此作者的第一本书
+while(entries){
+	cout<<iter->second << endl; // 打印每个题目
+    ++iter; // 前进到下一本书
+    --entries; // 记录已经打了多少本书
+}
+
+// 方法二：lower_bound+upper_bound
+for(auto beg = authors.lower_bound(search_item),end = authors.upper_bound(search_item); beg!=end; ++beg)
+    cout<<beg->second<<endl;
+
+// 方法三：equal_range
+for(auto pos = authors.equal_range(search_item);pos.first!=pos.second;++pos.first)
+    cout<<pos.first->second<<endl;
+```
+
+
+
+
+
+
+
+#### 11.3.6 一个单词转换的`map`(案例程序)
+
+建立转换映射
+
+```cpp
+map<string,string> buildMap(ifstream &map_file){
+    map<string,string> trans_map; //保存转换规则 
+    string key; 	// 要转换的单词
+    string value; 	// 替换后的内容
+    // 读取第一个单词，行中*剩余内容*存入value
+    while(map_file>>key && getline(map_file,value))
+        if(value.size()>1) // 检查是否有转换规则 
+            trans_map[key] = value.substr(1); // getline会读入空格，这里从1开始跳过空格
+    	else
+            throw runtime_error("no rule for"+key);
+    return trans_map;
+}
+```
+
+生成转换文本
+
+```cpp
+
+```
+
