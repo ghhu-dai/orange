@@ -1567,6 +1567,239 @@ map<string,string> buildMap(ifstream &map_file){
 生成转换文本
 
 ```cpp
-
+const strig &transform(const string &s,const map<stirng,string> &m){
+    auto map_it = m.find(s);
+    if(map_it!=m.cend())
+        return map_it->second; // 使用替换短语
+    else
+        return s; // 否则返回原string
+}
 ```
+
+定义`word_transform`函数 
+
+```cpp
+void word_transform(ifstream &map_file,ifstream &input){
+    auto trans_map = buildMap(map_file); 	// 保存转换规则 
+    string text;							// 保存输入中的每一行	
+    while(getline(input,text)){ 			// 读取一行输入
+        istringstream stream(text);
+        string word;						
+        bool firstword = true; 				// 控制是否打印空格
+        while(stream>>word){				// 读取一个单词
+            if(firstword)
+                firstword = false;
+            else
+                cout<<" ";
+            cout<<transform(word,trans_map);
+        }
+        cout<<endl;							 // 完成一行的转换
+    }
+}
+```
+
+
+
+
+
+### 11.4 无序容器
+
+如果关键字类型固有就是无序 的，或者性能测试发现问题可以用哈希技术解决就可以用无序容器
+
+无序 容器桶的管理操作
+
+| 桶接口                    |                                                              |
+| ------------------------- | ------------------------------------------------------------ |
+| `c.bucket_count()`        | 正在使用的桶的数目                                           |
+| `c.max_bucket_count()`    | 容器能容纳的最多桶的数量                                     |
+| `c.bucket_size(n)`        | 第n个桶中有多少个元素                                        |
+| 桶迭代                    |                                                              |
+| `local_iterator`          | 可以用来访问桶中元素的迭代器类型                             |
+| `const_local_iterator`    |                                                              |
+| `c.begin(n),` `c.end(n)`  | 桶n的首元素迭代器和尾后迭代器                                |
+| `c.cbegin(n)`,`c.cend(n)` |                                                              |
+| 哈希策略                  |                                                              |
+| `c.load_factor()`         | 每个桶的平均元素数量 ，返回float值                           |
+| `c.max_load_factor()`     | c试图维护的平均桶大小                                        |
+| `c.rehash(n)`             | 重组存储，使得`bucket_count>=n`且`bucket_count>size/max_load_factor` |
+| `c.reserve(n)`            | 重组存储，使得c可以保存n个元素且不必`rehash`                 |
+|                           |                                                              |
+
+无序 容器对关键字类型的要求：？？？
+
+
+
+
+
+
+
+## 第12章 动态内存
+
+全局对象在程序启动时分配，在程序结束时销毁 
+
+局部自动对象：进入其定义所在的程序块时被 创建，离开时销毁 
+
+局部`static`对象在第一次使用前分配，在程序结束时销毁 
+
+动态分配（自由空间`free store`/堆`heap`）的对象只有显式被 释放时，才会被 销毁 
+
+
+
+### 12.1动态内存和智能指针
+
+`shared_ptr`：允许多个指针指向同一个对象
+
+`unique_ptr`：独占 所指向的对象
+
+`weak_ptr`： 伴随类，弱引用，指向 `shared_ptr`所管理的对象
+
+三种指针都定义在`memory`头文件中
+
+
+
+
+
+#### 12.1.1 `shared_ptr`类
+
+`shared_ptr`和`unique_ptr`都支持的操作
+
+| `shared_ptr<T> sp` | 空智能指针，可以类型为T的对象                                |
+| ------------------ | ------------------------------------------------------------ |
+| `unique_ptr<T> up` |                                                              |
+| p                  | 将p 用作一个条件判断，若p指向一个对象，则为true              |
+| *p                 |                                                              |
+| `p->mem`           |                                                              |
+| `p.get()`          | 返回p中保存的指针，如果 智能指针释放了对象，则这个保存的指针所指向的对象也就消失了 |
+| `swap(p,q)`        | 交换p,q的指针                                                |
+| `p.swap(q)`        |                                                              |
+
+`shared_ptr`独有的操作
+
+| `make_shared<T>(args)` | 返回一个`shared_ptr`,指向一个动态分配的类型为T的对象，使用args初始化此对象 |
+| ---------------------- | ------------------------------------------------------------ |
+| `shared_ptr<T> p(q)`   | p是shared_ptr q的拷贝，此操作会递增q中的计数器，q中的指针必须能转换为T* |
+| `p=q`                  | 递减p的引用计数，递增q的引用计数，若p的引用计数变为0则释放原内存 |
+| `p.unique()`           | 若p.use_count()为1，返回true，否则返回false                  |
+| `p.use_count()`        | 返回与p共享对象的智能指针数量                                |
+
+`make_shared`函数 
+
+```cpp
+// make_shared用参数来构造给定类型的对象，类似emplace，如：调用make_shared<string>时传递的参数必须能用来初始化一个string
+
+auto p = make_shared<vector<string>>() //  p指向一个动态分配的空vector<string>
+```
+
+`shread_ptr`的拷贝和赋值
+
+​	每个`shared_ptr`都会记录有多少个其他`shared_ptr`指向相同的对象，每个`shared_ptr`都有一个关联的计数	器：**引用计数**
+
+
+
+`shared_ptr`自动销毁所管理的对象
+
+​	当最后一个shared_ptr被 销毁时，shared_ptr类会通过析构函数自动销毁指向的对象
+
+
+
+`note`：
+
+​	如果将一个`shared_ptr`存放于一个容器中，而后 不再需要全部元素，而只使用其中一部分，
+
+​	记得用`erase`删除不需要的元素
+
+
+
+程序使用动态生存期出于以下三种原因之一：
+
+1. 程序 不知道自己需要使用多少对象
+2. 程序 不知道所需对象的准确类型
+3. 程序 需要在多个对象间共享数据 （多个对象之间共享相同的状态）
+
+
+
+定义`StrBlob`类
+
+```cpp
+class StrBlob{
+public:
+    typedef std::vector<std::string>::size_type size_type;
+    StrBlob();
+    StrBlob(std::initializer_list<std::string> il);
+    size_type size() const {return data->size();}
+    bool empty() const{return data->empty();}
+    // 添加和删除元素
+    void push_back(const std::string &t){data->push_back(t);}
+    void pop_back();
+    // 元素访问
+    std::string& front();
+    std::string& back();
+    
+private:
+    std::shared_ptr<std::vector<std::string>> data;
+    // 如果 data[i]不合法，抛出一个异常
+    void check(size_type i, const std::string &msg)const;
+};
+
+// 两个构造函数都使用初始化列表来初始化其data成员
+StrBlob::StrBlob():data(make_shared<vector<string>>() ){}
+StrBlob::StrBlob(initializer_list<std::string> il):data(make_shared<vector<string>>(il)){}
+
+// 在pop_back,front,back操作之前 ，先检查容器是否为空
+void StrBlob::check(size_type i, const string &masg)const{
+    if(i>=data->size())
+        throw out_of_range(masg);
+}
+
+string& StrBlob::front(){
+	check(0,"front on empty StrBlob");
+    return data->front();
+}
+
+string& StrBlob::back(){
+    check(0,"back on empty StrBlob");
+    return data->back();
+}
+
+
+void StrBlob::pop_back(){
+    check(0,"pop_back on empty StrBlob")
+	data->pop_back();
+}
+
+// 智能指针应该是解决了浅拷贝问题
+```
+
+
+
+#### 12.1.2 直接管理内存
+
+使用new动态分配和初始化对象
+
+```cpp     
+int *pi = new int; // pi 指向一个动态分配的未初始化的无名对象（默认初始化）
+// 置信初始化：内置类型或组合类型是未定义的值，而类型对象将用默认构造函数进行初始化 如：
+string *pi = new string; // 初始化为空string
+int *pi = new int; // pi指向一个未初始化的int
+int *pi = new int(); // 值 初始化为0，*pi为0
+```
+
+动态分配的`const`对象
+
+```cpp
+const string *pcs = new const string;  // 通过默认构造函数 隐式初始化
+delete pcs; // 销毁对象，释放内存
+
+// 类似于其他const对象，一个动态分配的const对象必须进行初始化
+```
+
+`delete`之后重置指针值 
+
+​	在`delete`后，指针变成空悬指针 
+
+
+
+
+
+#### 12.1.3 `shared_ptr` 和 `new` 结合使用
 
