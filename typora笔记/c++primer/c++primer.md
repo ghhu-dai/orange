@@ -1803,3 +1803,165 @@ delete pcs; // 销毁对象，释放内存
 
 #### 12.1.3 `shared_ptr` 和 `new` 结合使用
 
+定义和改变shared_ptr的其他方法
+
+| shared_ptr<T> p(q)      | p管理内置指针q所指向的对象，q必须指向new分配的内存且能够转换成T*类型 |
+| ----------------------- | ------------------------------------------------------------ |
+| `shared_ptr<T> p(u)`    | p从`unique_ptr` u 那里接管了对象的所有权，将u置为空          |
+| `shared_ptr<T> p(q,d)`  | p接管了内置指针q所指向的对象的所有权，q必须能转换为T*类型，p将使用可调用对象d来代替`delete` |
+| `shared_ptr<T> p(p2,d)` | p是p2的拷贝，唯一区别是p将用可调用对象d来代替`delete`        |
+| `p.reset()`             | 若p是唯一指向其对象的`shared_ptr`，`reset`会释放此对象       |
+| `p.reset(q)`            | 若传递了可选的参数内置指针q，会令p指向q,否则会将p置为空      |
+| `p.reset(q,d)`          | 若传递了参数d，将会调用d而不是`delete`来释放q                |
+
+
+
+**不要混合使用普通指针和智能指针**
+
+​	shared_ptr可以协调对象的析构 ，但这仅限于其自身的拷贝，-> 推荐使用`make_shared`而不是`new`，也避免将	同一块内存绑定到多个独立创建的`shared_ptr`
+
+```cpp
+void process(shared_ptr<int> ptr){
+    // 使用ptr
+    
+}// ptr离开作用域，局部变量ptr被销毁，其指向的内存引用次数减1
+
+// 正确使用示例
+shared_ptr<int> p(new int(42));; // 引用计数 为1
+process(p); // 在process中引用计数值 为2
+int i = *p; // 正确，引用计数值 为1
+
+// 错误的写法
+int *x(new int(11024));
+process(x); // 错误，不能将int* 转换为 shared_ptr<int>
+process(shared_ptr<int>(x)); // 合法，但x指向的内存会在process结束时被释放
+int j = *x; // 未定义的：x是一个空悬指针！
+```
+
+`warning`：不要用内置指针访问一个智能指针所负责的对象，因为无法知道对象何时会被 销毁
+
+
+
+**不要使用get初始化另一个智能指针或为智能指针赋值**
+
+​	智能指针类型定义了.`get`()函数，它是为了向不能使用智能指针的代码传递一个内置指针，该内置指针不能被`delete` 
+
+```cpp
+shared_ptr<int> p(new int(42)); //引用计数1
+int *q = p.get(); // 正确，但使用q时，不能让它管理的指针被 释放
+{
+    // 新程序 块
+    shared_ptr<int> (q); // 未定义，两个独立的shared_ptr指向相同的内存
+}// 程序 块结束 q被销毁，它指向的内存被释放 
+int foo = *p; // 未定义，p指向的内存已经被释放
+
+// 这是如果再释放p，应付造成二次delete，类似浅拷贝的问题
+```
+
+
+
+关于`reset`
+
+```cpp
+shared_ptr<int> p(new int(42)); 
+p = new int(1024); // 错误，不能将一个指针赋予shared_ptr
+p.reset(new int(1024)); // 正确，p指向一个新对象
+
+// 与unique配合使用，控制多个shared_ptr共享的对象，在改变底层对象之前，先检查 自己是否是当当前对象仅有的用户，如果不是在，改变之前要制作一份新的拷贝
+if(!p.unique()){
+    p.reset(new string(*p)); // 分配新的拷贝
+}
+*p += newVal; // 确保自己是唯一的用户后，再改变对象的值 
+```
+
+
+
+
+
+
+
+#### 12.1.4 智能指针和异常
+
+智能指针相比普通指针，在程序 异常时更能确保释放内存
+
+**智能指针和哑类**
+
+...
+
+`note`：为正确使用智能指针，要坚持 一些基本规范
+
+1. 不使用相同的内置指针值 初始化或`reset`多个智能指针
+2. 不`delete get()`返回的指针
+3. 不使用`get()`初始化或`reset`另一个智能指针
+4. 如果 使用`get()`返回的指针，当最后一个对应的智能指销毁 后，指针就变为无效了
+5. 如果 使用智能指针管理的资源不是new分配的内存，记住传递给它一个删除器
+
+
+
+
+
+
+
+#### 12.1.5 `unique_ptr`
+
+`unique_ptr`操作,不能拷贝或赋值
+
+|                        |                                                              |
+| ---------------------- | ------------------------------------------------------------ |
+| `unique_ptr<T> u1`     | 空`unique_ptr`，可以指向类型为T的对象，u1会使用delete释放它的指针 |
+| `unique_ptr<T,D> u2`   | u2会使用类型为D的对象来释放它的指针                          |
+| `unique_ptr<T,D> u(d)` | 空`unique_ptr`，指向类型为T的对象，用类型为D的对象d代替`delete` |
+| `u = nullptr`          | 释放u指向的对象，将u置为空                                   |
+| `u.release()`          | u放弃对指针的控制权，返回指针，并将u置为空                   |
+| `u.reset()`            | 释放u指向的对象                                              |
+| `u.reset(q)`           | 如果 提供了内置指针q，令u指向这个对象，否则将u置为空         |
+| `u.reset(nullptr)`     |                                                              |
+
+  如：通过`release`和`reset`更改`unique_ptr`所有权
+
+```cpp
+unique_ptr<string> p1(new string("dai"));
+
+unique_ptr<stirng> p2(p1.release());
+
+unique_ptr<string> p3(new string("shou"));
+p2.reset(p3.release()); // reset 释放了p2原来指向的内存   、
+
+
+// 注意：release将管理内存的责任简单转移 ，如果 不用另一个智能指针来保存release返回的指针，程序 就要负责资源的释放
+p2.release() ;  // 错误，p2不会释放内存，而且丢失了指针
+auto p  = p2.release(); // 正确，但必须 记得delete(p);
+```
+
+
+
+**传递`unique_ptr`参数和返回`unique_ptr`**
+
+​	特殊情况：可以拷贝或赋值一个将要销毁 的`unique_ptr`
+
+```cpp
+// 如从函数 返回一个unique_ptr;
+unique_ptr<int> clone(int p){
+    reutrn unique_ptr<int>(new int(p) ); // 该对象将要被 销毁 
+}
+
+// 再如：返回局部对象的拷贝
+unique_ptr<int> clone(int p){
+    unique_ptr<int> ret(new int(P));
+    //...
+    return ret;
+}
+```
+
+
+
+**向unique_ptr传递删除器**
+
+？？？
+
+
+
+
+
+#### 12.1.6 weak_ptr
+
