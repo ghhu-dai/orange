@@ -35,9 +35,10 @@
 1. 这是1
    1. 这是1.1（二级为止）
       
+
  表格
- 
- 
+
+
  表头|表头|表头
 ---|:--:|---:
 内容|内容|内容
@@ -79,10 +80,11 @@ int b = 1;
 
 
 
-<font color = green>ok，这些内容够了(`<font color = green><font>`)<font>
-<font color = red >red<font>
-<font color = blue >blue<font>
-<font color = purple>purple<font>
-<font color = orange >orange<font>
+<font color = green>ok，这些内容够了</font>
+<font color = red >red</font>
+<font color = blue >blue</font>
+<font color = purple>purple</font>
+<font color = orange >orange</font>
 
 <u>下划线</u>`<u> </u>`
+
