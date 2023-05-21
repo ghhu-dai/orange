@@ -1965,3 +1965,223 @@ unique_ptr<int> clone(int p){
 
 #### 12.1.6 weak_ptr
 
+`weak_ptr`指向由一个`shared_ptr`管理的对象，本身不控制所指向对象的生存期，同时将一个`weak_ptr`绑定到一个`shared_ptr`不会改变`shared_ptr`的引用计数。一旦最后一个指向对象的shared_ptr被 销毁，对象就会被 释放，即使有weakP_ptr指向对象，对象也还是会被 释放 -> ’弱‘ 共享对象
+
+| weak_ptr            |                                                              |
+| ------------------- | ------------------------------------------------------------ |
+| `weak_ptr<T> w`     |                                                              |
+| `weak_ptr<T> w(sp)` | 与`shared_ptr sp`指向相同对象的`weak_ptr`,T要能转换为sp指向的类型 |
+| `w = p`             | p 可以是一个`shared_ptr`或一个目标`weak_ptr`，赋值后,w和p共享一个对象 |
+| `w.reset()`         | 将w转为空                                                    |
+| `w.use_count()`     | 与w共享对象的shared_ptr数量                                  |
+| `w.expired()`       | 若`w.use_count()`为0，返回`true`，否则返回false              |
+| `w.lock()`          | 如果 `expired`为true，返回一个空`shared_ptr`，否则返回一个指向w的对象的`shared_ptr` |
+|                     |                                                              |
+
+```cpp
+// 由于对象可能不存在，不能直接调用weak_ptr，要先调用lock，先检查weak_ptr指向的对象是否仍存在
+if(shared_ptr<int> np = wp.lock()) // 如果np不为空，则条件成立
+```
+
+
+
+
+
+
+
+###  12.2 动态数组 
+
+大多数应用应该使用标准库容器而不是动态分配的数组 ，使用容器更为简单，更不容易出现内存管理错误并且可能 有更好的性能
+
+使用容器的类可以使用默认版本的拷贝，赋值和析构 操作，分配动态数组 的类则必须 定义自己版本的操作，在拷贝，复制以及销毁对象时管理所关联的内存
+
+
+
+#### 12.2.1 `new` 和 数组 
+
+用`new`分配一个对象数组 
+
+```cpp
+int *pia = new int[42]; // []指明 要分配对象的数目
+
+typedef int arrT[42]; // arrT表示42个Int的数组类型
+int *p = new arrT; // 分配一个42个int的数组 ，p指向第一个int 
+
+```
+
+
+
+**分配一个数组 会得到一个元素类型的指针**
+
+ 	动态数组不是数组类型，不能对其调用`begin,end`故也不能使用范围`for`循环
+
+初始化动态分配对象的数组 
+
+```cpp
+// 默认情况下，默认初始化
+
+int *pia = new int[10];  		// 10个未初始化的Int
+int *pia2 = new int[10](); 		// 10个值初始化为0的int
+string *psa = new string[10]; 	// 10个空string
+string *psa2 = nre string[10](); // 10个空string
+
+int *pia3 = new int[10]{0,1,2,3,4,5,6,7,8,9}; // 列表初始化
+```
+
+
+
+动态分配一个空数组是合法的
+
+```cpp
+char arr[0]; // 错误，不能定义长度为0的数组 
+char *cp = new char[0]; // 正确，但cp不能解引用
+```
+
+释放动态数组 
+
+```cpp
+delete p; // p必须指向一个动态分配的对象或为空
+delete [] pa; // pa 必须指向一个动态分配的数组 或为空（数组 中的元素按逆序销毁 ）
+```
+
+智能指针和动态数组
+
+```cpp
+// unique_ptr 可以直接管理动态数组 ，且可以使用下标运算符
+// up指向一个包含10个未初始化的int的数组 
+unique_ptr<int []> up(new int[10]);
+up.release(); // 自动用delete[]销毁指针， 注意：这和一般版本的release不一样
+up[i];
+
+// 要使用shared_ptr管理一个动态数组，必须提供自己定义的删除器,因为shared_ptr默认使用delete销毁对象
+shared_ptr<int> sp(new int[10],[](int *p){ delete[] p; });
+// shared_ptr未定义下标运算符，不支持算术运算，要做这些 操作，需要利用get()获取一个普通指针
+for(size_t i=0;i!=10; ++i){
+    *(sp.get()+i) = i;
+}
+```
+
+
+
+
+
+#### 12.2.2 allocator类
+
+`new`将内存分配和对象构造组合在一起可能会导致不必要的浪费，更优的解决方法是先分配一大块内存，在真正需要时才执行对象创建操作
+
+标准库`allocator`类定义在头文件`memory`中，可将内存分配和对象构造分离。 
+
+| 标准库`allocator`类及其算法 |                                                              |
+| --------------------------- | ------------------------------------------------------------ |
+| `allocator<T> a`            | 定义一个类型为T的`allocator`对象，它可以为T类型的对象分配内存 |
+| `a.allocate(n)`             | 分配一段原始的未构造的内存，保存n个类型为T的对象             |
+| `a.deallocate(p,n)`         | 释放内存，调用`deallocate`后必须 对在该内存空间上创建的对象调用`destroy` |
+| `a.construct(p,args)`       | 在p指向的内存中构造一个对象                                  |
+| `a.destroy(p)`              | 对p指向的对象执行析构函数                                    |
+
+`allocator`分配未构造的内存
+
+ 	为了使用`allocate`返回的内存，必须 用`construct`构造对象，使用未构造的内存其行为是未定义的
+
+```cpp
+auto q = p; // q指向最后构造的元素之后 的位置
+alloc.construct(q++); 			// *q 为空字符串
+alloc.construct(q++,10,'c'); 	// *q 为10个c
+alloc.construct(q++,"hi"); 		// *qi为hi
+
+cout<<*p<<endl; // 正确，使用string的输出运算符
+cout<<*q<<endl; // 错误，q指向未构造的函数 ！
+
+// 使用完对象后，调用destroy销毁
+while(q!=p){
+    alloc.destroy(--q); // 释放构造的string
+}
+
+// 销毁 后，可以重新这部分内存保存其他string，也可以释放掉归还 给系统 
+alloc.deallocate(p,n); // 释放
+```
+
+拷贝和填充未初始化内存的算法
+
+| `allocator`算法->头文件`memory`                              |                                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 这些函数 在给定目的位置创建元素，而不是由系统 分配内存给它们 |                                                              |
+| `uninitialized_copy(b,e,b2)`                                 | 将b,e范围内的元素拷贝到b2指向的未构造的原始内存，这块内存必须足够大 |
+| `uninitialized_copy(b,n,b2)`                                 |                                                              |
+| `uninitialized_fill(b,e,t)`                                  | 在迭代器b,e指定的原始内存范围中创建对象，对象的值 均为t的拷贝 |
+| `uninitialized_fill_n(b,n,t)`                                |                                                              |
+
+例 ：
+
+```cpp
+// 分配比vi中元素所占用空间大一位的动态内存
+auto p = alloc.allocate(vi.size()*2);
+// 通过拷贝vi中的元素来构造从p开始的元素
+auto q = uninitialized_copy(vi.begin(),vi.end(),p);
+// 将剩余元素初始化42
+uninitialized_fill_n(q,vi.size(),42);
+```
+
+
+
+
+
+
+
+### 12.3 使用标准库：文本查询程序 
+
+```cpp
+/*
+	* 在一个给定文件中查询单词
+	* 查询结果是单词在文件中出现的次数，及所在行的列表
+	* 如果 一个单词在一行中出现 多次，此行只列出一次
+	* 行会按照升序输出
+*/
+```
+
+#### 12.3.1 文本查询程序 设计
+
+1.  `vector<string>` 来保存输入文件的一分拷贝，用行号作为下标提取行文本
+2. 使用一个`istringstream`来将每行分解为单词
+3. 使用一个`set`来保存每个单词在输入文本中出现的行号，保证每行只出现 一次且升序保存
+4. 使用一个`map`来将每个单词与它出现 的行号关联起来
+
+使用`TextQuery`类：
+
+​	在编写之前 先使用，确定类是否具有所需要的操作
+
+```cpp
+void runQueries(ifstream &infile){
+    TextQuery tq(infile); //保存文件建立查询map
+    // 与用户交互，完成查询并指印结果 
+    while(true){
+        cout<<"enter word to look for, or q to quit: ";
+        string s;
+        // 若遇到文件尾或用户输入q，循环终止
+        if(!(cin>>s) || s == "q") break;
+       	// 指向查询 并打印结果 
+        print(cout,tq.query(s))<<endl;
+    }
+}
+```
+
+
+
+
+
+#### 12.3.2 文本查询程序类的定义
+
+```cpp
+class QueryResult; // 为了定义函数query的返回类型，这个 定义是必需的
+class TextQuery{
+public:
+    using line_no = std::vector<std::string>::size_type;
+    TextQuery(std::ifstream&);
+    QueryResult query(const std::strings&) const;
+private:
+    std::shared_ptr<std::vector<std::string>> file; // 输入文件
+    // 每个单词到它所在的行号的集合的映射
+    std::map<std::string,std::shared_ptr<std::set<line_no>>> wm;
+}
+```
+

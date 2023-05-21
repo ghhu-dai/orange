@@ -1,3 +1,17 @@
+# sql语句的执行顺序 
+
+```sqlite
+FROM
+WHERE
+GROUP BY 
+HAVING
+SELECT
+DISTINCT
+ORDER BY
+```
+
+
+
 # SQL基础语言学习
 
 ## CREATER TABLE - 创建表
@@ -292,4 +306,137 @@ DROP VIEW 视图名；
 
 
 # SQL 常用函数学习
+
+
+
+## AVG 平均值 
+
+返回数值列的平均值 ，不包括NULL
+
+```sqlite
+SELECT AVG(列名) FROM 表名；
+```
+
+
+
+## COUNT 汇总行数
+
+返回匹配指定条件的行数，不包括NULL
+
+```sqlite
+SELECT COUNT(*) FROM 表名； 			// 返回表中的记录数
+SELECT COUNT(DISTINCT 列名) FROM 表名； // 返回指定列的不同值的数目
+SELECT COUNT(列名) FRONM 表名； 			// 返回指定列的值的数目
+```
+
+
+
+## MAX 最大值 
+
+返回一列的最大值 ，null不包括在计算中
+
+如果 用于文本列，获得按字母顺序排列的最高或最低值 
+
+```sqlte
+SELECT MAX(列名) FROM 表名；
+```
+
+
+
+## MIN 最小值 
+
+返回一列中的最小值 ，null不包括在计算中
+
+```sqlite
+SELECT MIN(列名) FROM 表名；
+```
+
+
+
+
+
+## SUM 求和
+
+返回数值列的总数
+
+```sqilte
+SELECT SUM(列名) FROM 表名；
+```
+
+
+
+## GROUP BY 分组
+
+用于结合合计函数 ，根据一个或多个列 对结果集进行分组
+
+```sqlite
+SELECT 列名A，统计函数（列名B）
+FROM 表名
+WHERE 查询条件
+GROUP BY 列名A；
+```
+
+
+
+## HAVING 句尾连接
+
+在SQL中增加HAVING子句的原因是，WHERE关键字无法与合计函数一起使用
+
+HAVING不可用于分组之前 的数据 
+
+WHERE 不可用过分组之后 的数据 
+
+```sqlite
+SELECT 列名A 统计函数（列名B）
+FROM 表名
+WHERE 没有函数的查询条件
+GROUP BY 列名A
+HAVING 包含统计函数的查询条件；
+```
+
+
+
+## UCASE/UPPER 大写
+
+把字段 的值 转换为大写
+
+```sqlite
+SELECT UPPER(列名) FROM 表名；
+
+小写是LCASE/LOWER
+```
+
+
+
+
+
+## LEN/LENGTH 获取长度
+
+返回文本字段中值 的长度
+
+```sqlite
+SELECT LENGTH(列名) FROM 表名；
+
+// 如：
+SELECT LENGTH(lastname),lastname FROM persons;
+```
+
+
+
+## ROUND 数值取舍
+
+```sqlite
+SELECT ROUND(列名，精度 ) FROM 表名；
+// ROUND是四舍五入的
+```
+
+
+
+
+
+## NOW/SYSDATE 当前 时间
+
+```sqlite
+SELECT SYSDATE FROM 表名；
+```
 
