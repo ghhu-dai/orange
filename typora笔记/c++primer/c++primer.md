@@ -138,11 +138,13 @@ binary; // 二进制形式IO
 
 ### 8.3 string 流
 
-头文件`sstream `：`istringstream`,`ostringstream`,`stringstream`
+头文件`sstream `：`istringstream, >>` ,`ostringstream ,<<`,`stringstream`
 
 相关操作：
 
 ```cpp
+istringstream; // 以空白作为分隔，不会读取空白
+
 stream strm;
 stream strm(s); // 保存strign s的一个拷贝
 strm.str(); // 返回strm保存的string的拷贝
@@ -1635,11 +1637,11 @@ void word_transform(ifstream &map_file,ifstream &input){
 
 ## 第12章 动态内存
 
-全局对象在程序启动时分配，在程序结束时销毁 
+全局对象：				在程序启动时分配，在程序结束时销毁 
 
-局部自动对象：进入其定义所在的程序块时被 创建，离开时销毁 
+局部自动对象：		进入其定义所在的程序块时被 创建，离开时销毁 
 
-局部`static`对象在第一次使用前分配，在程序结束时销毁 
+局部`static`对象：	在第一次使用前分配，在程序结束时销毁 
 
 动态分配（自由空间`free store`/堆`heap`）的对象只有显式被 释放时，才会被 销毁 
 
@@ -1663,7 +1665,7 @@ void word_transform(ifstream &map_file,ifstream &input){
 
 `shared_ptr`和`unique_ptr`都支持的操作
 
-| `shared_ptr<T> sp` | 空智能指针，可以类型为T的对象                                |
+| `shared_ptr<T> sp` | 空智能指针，可以指向类型为T的对象                            |
 | ------------------ | ------------------------------------------------------------ |
 | `unique_ptr<T> up` |                                                              |
 | p                  | 将p 用作一个条件判断，若p指向一个对象，则为true              |
@@ -1698,7 +1700,7 @@ auto p = make_shared<vector<string>>() //  p指向一个动态分配的空vector
 
 `shared_ptr`自动销毁所管理的对象
 
-​	当最后一个shared_ptr被 销毁时，shared_ptr类会通过析构函数自动销毁指向的对象
+​	当最后一个`shared_ptr`被 销毁时，`shared_ptr`类会通过析构函数自动销毁指向的对象
 
 
 
@@ -1707,6 +1709,10 @@ auto p = make_shared<vector<string>>() //  p指向一个动态分配的空vector
 ​	如果将一个`shared_ptr`存放于一个容器中，而后 不再需要全部元素，而只使用其中一部分，
 
 ​	记得用`erase`删除不需要的元素
+
+
+
+
 
 
 
@@ -1778,7 +1784,7 @@ void StrBlob::pop_back(){
 
 ```cpp     
 int *pi = new int; // pi 指向一个动态分配的未初始化的无名对象（默认初始化）
-// 置信初始化：内置类型或组合类型是未定义的值，而类型对象将用默认构造函数进行初始化 如：
+// 默认初始化：内置类型或组合类型是未定义的值，而类型对象将用默认构造函数进行初始化 如：
 string *pi = new string; // 初始化为空string
 int *pi = new int; // pi指向一个未初始化的int
 int *pi = new int(); // 值 初始化为0，*pi为0
@@ -1827,7 +1833,7 @@ void process(shared_ptr<int> ptr){
 }// ptr离开作用域，局部变量ptr被销毁，其指向的内存引用次数减1
 
 // 正确使用示例
-shared_ptr<int> p(new int(42));; // 引用计数 为1
+shared_ptr<int> p(new int(42)); // 引用计数 为1
 process(p); // 在process中引用计数值 为2
 int i = *p; // 正确，引用计数值 为1
 
@@ -1965,13 +1971,13 @@ unique_ptr<int> clone(int p){
 
 #### 12.1.6 weak_ptr
 
-`weak_ptr`指向由一个`shared_ptr`管理的对象，本身不控制所指向对象的生存期，同时将一个`weak_ptr`绑定到一个`shared_ptr`不会改变`shared_ptr`的引用计数。一旦最后一个指向对象的shared_ptr被 销毁，对象就会被 释放，即使有weakP_ptr指向对象，对象也还是会被 释放 -> ’弱‘ 共享对象
+`weak_ptr`指向由一个`shared_ptr`管理的对象，本身不控制所指向对象的生存期，同时将一个`weak_ptr`绑定到一个`shared_ptr`不会改变`shared_ptr`的引用计数。一旦最后一个指向对象的shared_ptr被 销毁，对象就会被 释放，即使有weak_ptr指向对象，对象也还是会被 释放 -> ’弱‘ 共享对象
 
 | weak_ptr            |                                                              |
 | ------------------- | ------------------------------------------------------------ |
 | `weak_ptr<T> w`     |                                                              |
 | `weak_ptr<T> w(sp)` | 与`shared_ptr sp`指向相同对象的`weak_ptr`,T要能转换为sp指向的类型 |
-| `w = p`             | p 可以是一个`shared_ptr`或一个目标`weak_ptr`，赋值后,w和p共享一个对象 |
+| `w = p`             | p 可以是一个`shared_ptr`或一个`weak_ptr`，赋值后,w和p共享一个对象 |
 | `w.reset()`         | 将w转为空                                                    |
 | `w.use_count()`     | 与w共享对象的shared_ptr数量                                  |
 | `w.expired()`       | 若`w.use_count()`为0，返回`true`，否则返回false              |
@@ -2075,7 +2081,7 @@ for(size_t i=0;i!=10; ++i){
 | --------------------------- | ------------------------------------------------------------ |
 | `allocator<T> a`            | 定义一个类型为T的`allocator`对象，它可以为T类型的对象分配内存 |
 | `a.allocate(n)`             | 分配一段原始的未构造的内存，保存n个类型为T的对象             |
-| `a.deallocate(p,n)`         | 释放内存，调用`deallocate`后必须 对在该内存空间上创建的对象调用`destroy` |
+| `a.deallocate(p,n)`         | 释放内存，调用`deallocate`前必须 对在该内存空间上创建的对象调用`destroy` |
 | `a.construct(p,args)`       | 在p指向的内存中构造一个对象                                  |
 | `a.destroy(p)`              | 对p指向的对象执行析构函数                                    |
 
@@ -2084,7 +2090,7 @@ for(size_t i=0;i!=10; ++i){
  	为了使用`allocate`返回的内存，必须 用`construct`构造对象，使用未构造的内存其行为是未定义的
 
 ```cpp
-auto q = p; // q指向最后构造的元素之后 的位置
+auto q = p; // q指向最后构造的元素之后 的位置，p指向allocator的起始内存 
 alloc.construct(q++); 			// *q 为空字符串
 alloc.construct(q++,10,'c'); 	// *q 为10个c
 alloc.construct(q++,"hi"); 		// *qi为hi
@@ -2094,7 +2100,7 @@ cout<<*q<<endl; // 错误，q指向未构造的函数 ！
 
 // 使用完对象后，调用destroy销毁
 while(q!=p){
-    alloc.destroy(--q); // 释放构造的string
+    alloc.destroy(--q); // 释放构造的string ，这里是前置--，配合迭代器从后向前使用
 }
 
 // 销毁 后，可以重新这部分内存保存其他string，也可以释放掉归还 给系统 
@@ -2177,11 +2183,72 @@ class TextQuery{
 public:
     using line_no = std::vector<std::string>::size_type;
     TextQuery(std::ifstream&);
-    QueryResult query(const std::strings&) const;
+    QueryResult query(const std::strings&) const;// 这个 const表示 常量成员函数，函数内不会修改类的属性
 private:
     std::shared_ptr<std::vector<std::string>> file; // 输入文件
     // 每个单词到它所在的行号的集合的映射
     std::map<std::string,std::shared_ptr<std::set<line_no>>> wm;
 }
+
+//	TextQuery 构造函数 接受一个ifstream
+TextQuery::TextQuery(ifstream &is):file(new vector<string>){ // 使用成员初始化列表
+    string text;
+    while(getline(is,text)){
+        file->push_back(text);
+        line_no n = file->size()-1; // 当前行号
+       	istringstream line(text); // 将文本分解 为单词
+        string word;
+        while(line>>word){
+            // 如果word不在wm中，以word为下标在wm中添加一项
+            auto &lines = wm[word]; // 这里lines要是引用，不然后续的插入对wm中的数据没有影响
+            if(!lines) // 第一次遇到该单词时，指针为空
+                lines.reset(new set<line_no>);
+            lines->insert(n);  // 将行号插入set中，set保证行号是唯一的
+        }
+    }
+}
+
+// QueryResult 类
+class QueryResult{
+    friend std::ostream& print(std::ostream&,const QueryResult&);
+public:
+    QueryResult(std::string s,
+               std::shared_ptr<std::set<line_on>> p,
+               std::shared_ptr<std::vector<std::string>> f):
+    			sought(s),file(f),lines(p){}
+private:    
+    std::string sought; // 查询单词
+    std::shared_ptr<std::vector<std::string>> file; // 输入文件
+    std::shared_ptr<std::set<line_no>> lines; // 出现的行号
+}
+
+// query函数 
+QueryResult TextQuery::query(const string &sought)const{
+    // 如果没找到sought，返回一个空的指向set的指针
+    static shared_ptr<set<line_no>> nodata(new set<line_no>);
+    // 使用find,而不是下标运算符来查找单词，避免将单词添加到wm中
+    auto loc = wm.find(sought);
+    if(loc == wm.end())
+        return QueryResult(sough,nodata,file); // 未找到的情况
+    else
+        reutrn QueryResult(sough,loc->second,file);
+}
+
+// 打印结果 
+// 先定义make_plural
+string make_plural(size_t ctr,const string &word,const string &ending){
+    reutrn (ctr>1)? word+ending:word;
+}
+
+ostream &print(ostream &os,const QueryResult &qr){
+    // 如果 找到单词打印出现次数和所有出现 的位置
+    os<<qr.sought<<" occurs "<<qr.lines->size() << " "<<make_plural(qr.lines->size(),"time","s")<<endl;
+    // 打印单词出现 的每一行,如果 没找到，for循环不会执行
+    for(auto num : qr.lines){
+        os<<"\t(line "<<num+1<<" ) "<<*(qr.file->begin()+num)<<endl;
+    }
+    return os;
+}
+
 ```
 
