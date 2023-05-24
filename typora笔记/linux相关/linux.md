@@ -40,6 +40,89 @@ for ff in week??
 
 
 
+## SSH
+
+**安装ssh服务端**
+
+```bash
+sudo apt updata
+sudo apt install openssh-server -y
+sudo systemctl status ssh # 查看状态
+sudo ufw allow ssh # 应对防火墙
+```
+
+
+
+**连接**
+
+```bash
+ssh username@ip  # 基本ssh 连接方法
+
+# 给ip地址取别名，10.22.75.177是ip地址
+sudo vim /etc/hosts -> 10.22.75.177 name 
+
+ssh username@ipname
+```
+
+进一步的简化
+
+```bash
+vim ~/.ssh/config
+	Host l1
+	HostName linx
+	Port 22
+	User dai
+	
+# 连接
+ssh l1
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -69,4 +152,10 @@ $ git consig --global user.email "dai_linux.email"
 
     `ssh-keygen -t rsa -C "dai_linux.email"`
 3. 复制公钥在github中添加即可
+
+
+
+
+
+
 
