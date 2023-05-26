@@ -15,6 +15,12 @@ cd - 		# 返回刚才的目录
 
 pwd 	# 打印当前路径
 
+date	# 显示 日期与时间
+cal		# 显示日历
+bc		# 计算器 ，默认输出整数
+	scale=3		# 调整输出精度
+	quit		# 退出 bc
+
 cat		# 查看文件内容
 head 	# 想看文件开头内容
 head --lines=2 README.md # 查看文件开头二行
@@ -35,6 +41,10 @@ for ff in week??
 > done
 # 没有撤销操作要小心，可以先echo打印看看，再操作
 ```
+
+
+
+
 
 
 
@@ -76,6 +86,10 @@ vim ~/.ssh/config
 # 连接
 ssh l1
 ```
+
+
+
+
 
 
 
