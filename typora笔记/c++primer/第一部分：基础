@@ -10,53 +10,52 @@
 linux 运行progl.cc生成可执行文件progl `g++ -o progl progl.cc`
     
 
-### 多选注释最好每行前加*，注释代码用单行注释
+多选注释最好每行前加*，注释代码用单行注释
 
-### 关于include导入头文件 
+关于include导入头文件 
 
-```c++
+```cpp
 #include<标准库头文件>
 #include"自定义头文件.h"
-
 ```
 
-### 文件重定向：`$ addItems <infile> outfile`
+文件重定向：`$ addItems <infile> outfile`
 
 利用加法程序addItems从infile文件读取销售记录，将输出结果写入outfile中，两文件都处于当前目录中
 
-### 8比特=1字节，4（或8）字节=1字
+8比特=1字节，4（或8）字节=1字
 
-### 关于如何选择数值类型
+**关于如何选择数值类型**
 
 1. 明确数值大于0，用无符号类型，如`unsigned int`
 2. 整型运算直接用`int`，数值大用`longlong`
 3. 数值运算中不用`char`和`bool`，`char`的符号问题在各种机器上不一致
 4. 浮点型用`double`，双精度运算代价不大于单精度，`long double`运算消耗大，一般不用
 
-### 类型转换：
+类型转换：
 
 1. 当把`bool`值赋给非`bool`值时，结果为0或1
 2. 赋给无符号类型超范围外的值时 ，结果为该值对总数取模后的余数，如：unsigned char (0~255),给-1，得255
 3. 赋给有符号类型范围外的值时，结果是未定义的
 4. -> 运算时不混用有符号类型和无符号类型
 
-### "字符串"其尾部是空字符，/0
+"字符串"其尾部是空字符，/0
 
-### 分开书写的字符串也是一个整体
+分开书写的字符串也是一个整体
 
 ```c++
 std::cout<<"a really really long string litreal"
         "that spans twos lines"<<std::endl;
 ```
 
-### 关于用{}进行初始化：
+关于用{}进行初始化：
 
 ```c++
  long double ld = 3.1415926536
  int a{ld},b={ld}; // 会报错，因为存在丢失信息的危险
 ```
 
-### 默认初始化：
+默认初始化：
 
 内置类型的变量在函数体外初始化为0，在函数体内不被初始化（未定义，不可访问）   
 
@@ -64,8 +63,7 @@ std::cout<<"a really really long string litreal"
 
 <font color = green>建议初始化每一个内置类型的变量<font>
 
-
-### 关于`extern`
+关于`extern`
 
 ```cpp
 extren int i; //只声明不定义
@@ -73,26 +71,26 @@ extren double pi = 3.1415; //定义
     
 ```
 
-### 变量命名规范
+变量命名规范
 
 1. 有意义
 2. 变量名小写，类名首字母大写
 3. 单词间有区分，驼峰或者下划线
 
-### 变量名作用域
+变量名作用域
 
 始于声明语句，结束于}
 
 <font color= green>作用变量时最好在附近定义<font>
 
-### 关于引用（左侧引用）：
+关于引用（左侧引用）：
 
 ```cpp
 int ival = 1;
 int &refval = ival; // 引用refval 必须初始化，且右值只能是一个对象，不能是字面值或表达式
 ```
 
-### 指针的四个状态：
+指针的四个状态：
 
 1. 指向一个对象
 2. 指向紧邻对象所占空间的下一个位置
@@ -115,18 +113,17 @@ p1 = a; // 错误
 
 <font color=green>建议初始所有指针<font>
 
-### 关于`void*`指针
+关于`void*`指针
 
 1. 可以存储任意类型对象的地址
 
-
-### 引用本身不是一个对象，指针是
+引用本身不是一个对象，指针是
 
 ```cpp
 int * & r = p; // 对指针p的一个引用
 ```
 
-### 关于`const`（const对象必须初始化）
+关于`const`（const对象必须初始化）
 
 1. 默认情况下，const对象仅在文件内有效，当多个文件出现同名的const变量时，等同于在不同文件中分别定义了独立的变量
    如果需要在一个文件中定义const变量，而在多个文件中可以声明使用，则在声明和定义前加上`extern`即可，表示该变量并非本文件独有
@@ -155,7 +152,7 @@ int *const curErr = &errNumb
 
 ```
 
-### 定义别名：
+定义别名：
 
 ```cpp
 typedef double wages
@@ -163,7 +160,7 @@ using SI = sales_item // c++11
 
 ```
 
-### auto类型说明符
+auto类型说明符
 
 ```cpp
 // auto 一般会忽略顶层const，保留底层const
@@ -177,7 +174,7 @@ const auot f = ci;
 
 ```
 
-### decltype类型指示符
+decltype类型指示符
 
 ```cpp
 decltype(f()) sum = x; // 与auto不同，decltype指导出的变量包括顶层const
@@ -197,10 +194,9 @@ decltype(*p) c; // 错误，*p是&int，必须初始化
 
 ```
 
+自定义数据结构{}后加；结束
 
-### 自定义数据结构{}后加；结束
-
-### 预处理器——头文件保护符
+预处理器——头文件保护符
 
 ```cpp
 #ifdef / # ifndef
@@ -208,6 +204,22 @@ decltype(*p) c; // 错误，*p是&int，必须初始化
 #endif
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -223,8 +235,7 @@ decltype(*p) c; // 错误，*p是&int，必须初始化
     using std::cout;
 ```
 
-<font color=blue>头文件（.h）的代码内容不应有`using`声明，因为头文件的代码会拷贝到引用他的文件中去，避免名字冲突<font>
----   
+<font color=orange>头文件（.h）的代码内容不应有`using`声明，因为头文件的代码会拷贝到引用他的文件中去，避免名字冲突</font>
 
 ## 3.2 string
 
