@@ -1,11 +1,14 @@
-# linux相关操作
+# linux命令操作
 
-## 13个基本命令和Shell脚本编程
+
+
+## 基本命令和Shell脚本编程
 
 ```bash
 ls 		# 列出当前目录所有文件和目录
 ls -l 	# 更加详细 == ll
 ls -a 	# 展示隐藏文件
+ls -d  	# 显示目录
 ls -la 
 
 cd 			# 进入目录
@@ -44,9 +47,11 @@ for ff in week??
 
 
 
+ 
 
 
-## 热键
+
+## 快捷键/热键
 
 ```bash
 1. [tab] # 命令补全，文件补全
@@ -55,10 +60,16 @@ for ff in week??
 2. [ctrl]+c # 终止当前指令
 3. [ctrl]+d # 键盘输入结束 ，= exit
 
-4. [shift]+[pageup],[shift]+[pageup] # 翻页
+4. [ctrl]+a # 在命令行中光标至开头
+5. [ctrl]+e # 在命令行中光标至结尾
+5. [ctrl]+u # 清空当前命令行
+
+6. [shift]+[pageup],[shift]+[pageup] # 翻页
 
 	
 ```
+
+
 
 ## 帮助说明 `man` `help`,`info`
 
