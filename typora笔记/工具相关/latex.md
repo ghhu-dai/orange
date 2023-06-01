@@ -5,9 +5,9 @@
 1. 行内公式： `$ f(x) = a+b $`(markdown里面默认没有单行公式，)
 $$
      f(x) = a + b
-     $$
-     
-     
+$$
+
+
      公式： ` $$ f(x) = a+b $$ `
 
 $$ f(x) = a+b $$
@@ -140,4 +140,14 @@ $$\begin{split}
 # `markdown`中调用`latex`
 
 键入`$$`回车
+
+### 公式左对齐
+
+```latex
+\begin{align}
+
+\end{align}
+
+% 如果 是align表示不带编号，不过在typora中好像加不加*都不带编号
+```
 
