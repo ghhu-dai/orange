@@ -21,7 +21,13 @@ $$ f(x) = a - b \tag{1,1} $$
 ---
 ## 数学结构：
 ### 简单运算：
-拉丁字母、阿拉伯数字和 +-*/= 运算符均可以直接输入获得，命令`\cdot`表示乘法的圆点，命令`\neq`表示不等号，命令`\equiv`表示恒等于，命令`\bmod`表示取模
+拉丁字母、阿拉伯数字和 +-*/= 运算符均可以直接输入获得，
+命令`\cdot`表示乘法的圆点，
+命令`\neq`表示不等号，
+命令`\equiv`表示恒等于，
+命令`\bmod`表示取模,
+根号`\sqrt`,分数`\frac`.
+`\times`叉乘
 
 1.` $$ x+2-3*4/6 = 4/y+x\cdot y $$`
 
@@ -46,7 +52,10 @@ $$ 0 \neq 1 \quad x \equiv x \quad 1 = 9 \bmod 2 $$
 
 ### 积分、极限、求和、乘积
 命令：`\int`表示积分，`\lim`表示极限， `\sum`表示求和，`\prod`表示乘积，`^`、`_`表示上、下限
-   * `$$  \lim_{x \to \infty} x^2_{22} - \int_{1}^{5}x\mathrm{d}x + \sum_{n=1}^{20} n^{2} = \prod_{j=1}^{3} y_{j}  + \lim_{x \to -2} \frac{x-2}{x} $$`
+```latex
+\lim_{x \to \infty} x^2_{22} - \int_{1}^{5}x\mathrm{d}x + \sum_{n=1}^{20} n^{2} = \prod_{j=1}^{3} y_{j}  + \lim_{x \to -2} \frac{x-2}{x} 
+```
+
 $$  \lim_{x \to \infty} x^2_{22} - \int_{1}^{5}x\mathrm{d}x + \sum_{n=1}^{20} n^{2} = \prod_{j=1}^{3} y_{j}  + \lim_{x \to -2} \frac{x-2}{x} $$
 
 ### 三圆点
@@ -80,7 +89,14 @@ $$
 
 
 
+
+
+
+
+
+
 ### 矩阵
+
 其采用矩阵环境实现矩阵排列，常用的矩阵环境有matrix、bmatrix[]、vmatrix||、pmatrix()，其区别为在于外面的括号不同
 ```
 $$ 
@@ -149,5 +165,48 @@ $$\begin{split}
 \end{align}
 
 % 如果 是align表示不带编号，不过在typora中好像加不加*都不带编号
+```
+
+#  三线表
+
+```latex
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[UTF8]{ctex}
+\usepackage{multirow}
+\usepackage{float}%提供float浮动环境
+\usepackage{lmodern} % 使用lmodern字体
+
+\begin{document}
+
+%经典三线表
+\begin{table}[H]
+\caption{\textbf{Example 5}}
+\centering
+\begin{tabular}{lllllll}% 四个c代表有四列且内容居中，还有l r
+\toprule%第一道横线
+&\multicolumn{3}{c}{\textbf{RMSE(cycles)}}&\multicolumn{3}{c}{\textbf{平均百分比误差(\%) }}\\
+\cmidrule(lr){2-4} % (lr)表示 左右端都对齐
+\cmidrule(l){5-7} % 左端对齐，主要是配合使两条下划线之间留空白，不要连在一起
+
+
+& \textbf{训练集}&\textbf{主要测试集}&\textbf{次要测试集} & \textbf{训练集} & \textbf{主要测试集} & \textbf{将要测试集} \\
+\midrule%第二道横线  表格中间的线
+% \multirow{2}{*}{Data1}&Data2&Data3&Data4 \\%Data1跨两行，自动表格宽度
+'Variance' model & 103 & 138(138) & 196 & 14.1 & 14.7(13.2) &11.4  \\
+'Discharge' model & 76 & 91(86) & 173 & 9.8 & 13.0(10.1) & 8.6 \\
+'Full' model & 51 & 118(100) & 214 & 5.6 & 14.1(7.5) & 10.7 \\
+% \midrule%第三道横线 
+% Data5&Data6&Data7&Data8 \\
+\bottomrule% 表格最后的线
+\end{tabular}
+\begin{flushleft} % 左对齐
+  注释内容
+\end{flushleft}
+\end{table}
+
+
+\end{document}
+
 ```
 
