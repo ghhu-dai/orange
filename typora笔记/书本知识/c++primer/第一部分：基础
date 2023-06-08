@@ -10,7 +10,7 @@
 linux 运行progl.cc生成可执行文件progl `g++ -o progl progl.cc`
     
 
-多选注释最好每行前加*，注释代码用单行注释
+多行注释最好每行前加*，注释代码用单行注释
 
 关于include导入头文件 
 
@@ -21,7 +21,14 @@ linux 运行progl.cc生成可执行文件progl `g++ -o progl progl.cc`
 
 文件重定向：`$ addItems <infile> outfile`
 
-利用加法程序addItems从infile文件读取销售记录，将输出结果写入outfile中，两文件都处于当前目录中
+```bash
+$ addItems <input.txt output.txt
+# 利用加法程序addItems从infile文件读取销售记录，将输出结果写入outfile中，两文件都处于当前目录中
+```
+
+
+
+
 
 8比特=1字节，4（或8）字节=1字
 
