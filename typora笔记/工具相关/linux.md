@@ -1,3 +1,16 @@
+
+
+# 杂项
+
+## 修改前缀
+
+修改~/.bashrc文件中的PS1即可。
+	如：` PS1='\[\033[1;32m\]\u@\h:\w\$\[\033[0m\] ' `
+
+**`ip`地址**：`47.113.150.236`
+
+
+
 # linux命令操作
 
 
@@ -246,6 +259,8 @@ ssh l1
 
 
 
+
+
 # vim
 
 ## 基本操作/vi
@@ -268,6 +283,7 @@ ssh l1
 4. 在某个范围内找到字符串并替换：`:n1,n2s/word1/word2/g`
    例 ：从第一列到最后一列寻找word1字符串，并将该字符串取代为word2，在取代前提示
    `:1,$s/word1/word2/gc` 
+5. 替换通篇：`:%s/word1/word2/g`
 
 ### **删除，复制，粘贴 **
 
@@ -404,7 +420,847 @@ $ git consig --global user.email "dai_linux.email"
 
 
 
+# 系统编程
+
+## gcc编译4步骤
+
+<img src="linux.assets/1687587679183.png" alt="1687587679183" style="zoom:50%;" />
 
 
 
+编译阶段逐行检查代码，最耗时
+
+**链接**：
+
+地址回填
+
+<img src="linux.assets/1687592898949.png" alt="1687592898949" style="zoom: 50%;" />
+
+ 数据段合并（节省空间）
+
+<img src="linux.assets/1687597105264.png" alt="1687597105264" style="zoom: 50%;" />
+
+**`gcc`常用参数：**
+
+1. `-I ` 指定头文件，适用于当源码和头文件不在同一目录下，处于同一目录下时，可省略`-I`
+2. `-c`：只做预处理，编译，汇编，得到二进制文件
+3. `-g`：编译时添加调试文件
+4. `-Wall`：显示 所有警告信息
+5. `-D`：在程序 中注册一个宏  如`gcc -c hello.c -o hello -D HELLO`,可以用来作调试信息的开关
+
+
+
+
+
+## 动态库和静态库
+
+**静态库和动态库（共享库）的区别**：动态库动态调用速度理论上慢一些，现在已经很很快了
+
+​	静态库：适用于对空间要求低，对时间要求高的核心程序 中，如操作系统 的启动进程
+
+​	动态库：适用于对时间要求低，对空间要求高
+
+<img src="linux.assets/1687590524234.png" alt="1687590524234" style="zoom:33%;" />
+
+<img src="linux.assets/1687590541849.png" alt="1687590541849" style="zoom:33%;" />
+
+### 静态库的制作和使用
+
+**制作：**
+
+`ar rcs libmylib.a file1.o` 
+
+* 静态库库名要求以`lib`开头，`.a`结尾，`mylib`可以修改
+
+```bash
+1. 生成.o文件
+gcc -c add.c -o add.o
+...
+
+2. 使用ar工具制作静态库
+ar rcs libmymath.a add.o sub.o div1.o 
+```
+
+**使用：**
+
+```bash
+# 和源码一起编译
+gcc  test.c lib库名.a -o a.out
+```
+
+会警告隐式声明，需要做静态库的头文件对应,在源码中包含头文件`#include "mymath.h"`
+
+```c
+// mymath.h
+#ifndef _MYMATH_H_
+#define _MYMATH_H_
+int add(int, int);
+int sub(int, int);
+int div1(int, int);
+#endif
+```
+
+
+
+### **动态库的制作和使用**：
+
+**制作**：
+
+1. 生成.o文件,生成与位置无关的代码，`-fPIC`
+
+   ```bash
+   gcc -c add.c -o add.o -fPIC
+   ```
+
+2. 使用`gcc -shared`制作动态库
+
+   ```bash
+   gcc -shared -o lib库名.so add.o ...
+   ```
+
+   
+
+**使用**：
+
+编译可执行程序 时，指定所使用的动态库， `-l(指定库名) -L(指定库路径)`
+
+```bash
+gcc test.c -o a.out -lmymath -L./lib  -I ./include
+```
+
+报错：找不到动态库,原因：
+
+​	链接器：工作于链接阶段， 工作时需要 `-l -L` 
+
+​	动态链接器：工作于程序 运行阶段，工作时需要提供动态库所在目录位置，通过环境变量:
+
+​							` export LD_LIBRARY_PATH=./lib`解决问题，但随着退出终端进程消失，设置失效，进一步的修改bashrc							文件（终端配置文件）
+
+```bash
+vi ~/.bashrc
+	export LD_LIBRARY_PATH=./lib 
+source .bashrc
+```
+
+
+
+
+
+
+
+## `gdb(gcc debug)`工具
+
+基础指令
+
+```bash	
+
+gdb a.out # 打开调试信息
+
+list 1 # 从第一行开始查看源码 ， l 继续显示 
+
+b/break 52 # 设置断点在52行，delete删除断点
+
+run/r # 运行程序 到断点所在行（断点处尚未执行）
+
+n/next  s/setp # 如果是函数 ，s会进入函数体内，n 不会
+
+ p/print i # 使用p查看变量i的值 
+ 
+ continue # 执行到下一个断点
+ 
+ quit # 退出
+```
+
+其他指令
+
+```bash
+run # 直接使用run查找 错误出现位置
+
+start # 直接使用start ，开始单步执行，n/s执行下一步,s进入函数时，可用finish 退出 ，start显示出来内容是还没有执行的语句 
+
+finish # 结束 当前 函数调用，返回到函数调用点
+
+ # 如果 main函数 是带有参数的,如：int main(arg[]);,可在gdb中直接使用set或run设置
+ set args 	aa bb cc dd
+ start
+ 或
+ list 1 
+ b 41
+ run 		aa bb cc dd
+ 
+ # 查看断点信息表：
+ info b
+ 
+ # 设置条件断点,用于循环/递归/嵌套中
+ b 20 if i = 5
+ 
+ # 查看变量类型
+ ptype i 
+ 
+ # 列出当前 程序 正存活着的栈帧
+ backtrace/bt 
+ # 根据编号切换 栈帧
+ frame/f
+ 
+ # 设置追踪变量
+ display 变量名
+ undisplay 编号 # 取消追踪
+ 
+```
+
+<img src="linux.assets/1687601658114.png" alt="1687601658114" style="zoom:33%;" />
+
+
+
+
+
+
+
+
+
+## 文件io
+
+![1687602616486](linux.assets/1687602616486.png)
+
+
+
+
+
+### 系统 函数 /系统调用
+
+####   `open/close`
+
+```c
+// flags: O_RDONLY, O_WRONLY, O_RDWR, O_APPEND, O_CREAT, O_EXCL(是否存在), O_TURNC, O_NONBLOCK(非阻塞)
+// mode_t mode 指定文件权限，在创建文件时会用到
+int open(const char *pathname, int flags);
+int open(const char *pathname, int flags, mode_t mode);
+
+```
+
+例：
+
+```c
+#include <unistd.h>
+#include <fcntl.h> // 服务于O_RDONLY
+#include <stdio.h> 
+#include <errno.h>
+#include <string.h> // 服务于strerror
+
+int main(){
+	int fd;
+	fd = open("./dai.text", O_RDONLY); // 打开已有文件不需要第三个参数来指定文件权限
+	
+	// 如果 文件存在，以只读方式打开并截断成0，如果不存在，创建并指定文件权限为0644,1x,2w,4r
+	// 创建文件时访问权限 = mode & ~umask(775) 
+	int fd2 = open("./GG_.text", O_RDONLY | O_CREAT | O_TRUNC, 0644); // rw-r--r--
+
+	int fd3 = open("./GGGG.txt", O_RDONLY);
+
+	printf("fd = %d\n", fd);
+	printf("fd2 = %d\n", fd2);
+	printf("fd3 = %d, erron = %d:%s\n", fd3, errno, strerror(errno));
+
+	close(fd);   
+	close(fd2);
+	return 0;
+}
+
+```
+
+
+
+#### `read`函数 
+
+`ssize_t read(int fd, void *buf, size_t count);`
+	`fd`:文件描述符
+	`buf`：存数据的缓冲区（临时存放数据 的区域）
+	`count`：缓冲区的大小
+	返回值 ：成功（返回读到的字节数，0表示读完）；失败（-1，设置errno） 
+
+#### `write`函数
+
+` ssize_t write(int fd, const void* buf, size_t count);`
+	`fd`：文件描述符
+	`buf`：待写出数据 的缓冲区
+	`count`：数据 大小
+	返回值 ：成功（写入的字节数），失败（-1，设置errno）【如果 返回-1且error=EAGIN或EWOULDBLOCK，说明不是					read失败，而是read在以非阻塞方式读一个设备文件或网络文件，并且文件无数据 】
+
+#### **文件描述符**：
+
+PCB进程控制块，本质 是一个结构体，体内有一个指针指向文件描述表
+
+<img src="linux.assets/1687617765860.png" alt="1687617765860" style="zoom:50%;" />
+
+ 其中0~2号分别是：`STDIN_FILENO,STDOUT_FILENO,STDERR_FILENO`,默认打开表中编号 最小的
+
+文件
+
+
+
+#### 作业：实现cp拷贝文件
+
+实现1：系统函数 `read`,`write`
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <fcntl.h>
+
+
+int main(int argc, char *argv[]){
+
+    int fd1 = open(argv[1], O_RDONLY);
+    if(fd1 == -1){
+        perror("open argv1 error");  // 等同于printf + strerror()
+        exit(1);
+    }
+    int fd2 = open(argv[2], O_RDWR | O_CREAT | O_TRUNC, 0644);
+    if(fd2 == -1){
+        perror("open argv2 error"); 
+        exit(1);
+    }
+
+    char buf[1024]; // 设置缓冲区大小
+    int n = 0; // read函数 的返回值 ，即读取到的字节数
+    while((n=read(fd1, buf, 1024)) != 0){
+        if(n < 0){
+            perror("read error");
+            break;
+        }
+
+        write(fd2,buf,n);
+    }
+
+    close(fd1);
+    close(fd1);
+
+    return 0;
+}
+```
+
+实现二：`fgetc`,`fputc`(c库函数的版本)
+
+```c
+#include <stdlib.h>
+#include <stdio.h>
+
+int main(void){
+
+    FILE *fp, *fp_out;
+    fp = fopen("dict.txt", "r");
+    if(fp == NULL){
+        perror("fopen1 error");
+        exit(1);
+    }
+
+    fp_out = fopen("dict.cp", "w");
+    if(fp_out == NULL){
+        perror("fopen2 error");
+        exit(1);
+    }
+
+    int n;
+    while((n=fgetc(fp))!= EOF){
+        fputc(n,fp_out);
+    }
+    fclose(fp);
+    fclose(fp_out);
+
+    return 0;
+}
+```
+
+
+
+**问题**：c函数 版本更快，比系统 调用更快，因为`fputc`每次4096
+	从用户空间到内核空间非常耗时，`fputc`有一个默认的缓冲区，存够4096个字节再到内核，而系统调用没有这个机制，会根据用户设定的字节大小访问内核，该大小如果 较小 ，就会多次访问内核耗时
+
+<img src="linux.assets/1687614295781.png" alt="1687614295781" style="zoom:33%;" />![1687615387817](linux.assets/1687615387817.png)
+
+<center >预读入缓输出</>
+
+
+
+
+
+
+
+
+
+
+
+#### 阻塞与非阻塞
+
+产生阻塞的场景：读设备文件，网络文件，常规文件无阻塞
+
+阻塞是设备文件和网络文件的属性，不是函数的属性
+
+设备文件如：`/dev/tty -- 终端文件`
+
+```c
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
+
+int main()
+{
+
+    int fd, n;
+    char buf[10];
+
+    fd = open("/dev/tty", O_RDONLY | O_NONBLOCK);
+    if(fd<0){
+        perror("open /dev/tty");
+        exit(1);
+    }
+
+    tryagain:
+
+        n = read(fd, buf, 10);
+        if (n < 0)
+        {
+            if (errno != EAGAIN)
+            {
+                perror("read /dev/tty");
+                exit(1);
+            }else{
+                
+                write(STDOUT_FILENO, "try again\n", strlen("try again\n"));
+                sleep(2);
+                goto tryagain;
+
+            }
+        }
+
+        write(STDOUT_FILENO, buf, n);
+        close(fd);
+
+
+
+    return 0;
+}
+```
+
+
+
+
+
+#### `fcntl`函数 
+
+`int flags = fcntl(fd, F_GETFL);`
+	`F_GETFL`：获取 文件状态
+	`F_SETFL`：设置文件状态
+
+
+
+
+
+将文件设置为非阻塞状态
+
+`flags |= O_NONBLOCK;`
+`fcntl(fd, F_SETFL, flags);`
+
+<img src="linux.assets/1687657113168.png" alt="1687657113168" style="zoom:33%;" />
+
+
+
+
+
+
+
+#### `lseek`函数 
+
+`off_t lseek(int fd, off_t offset, int whence);`
+
+参数：
+
+1.  `fd`：文件描述符
+2. `offset`：偏移量
+3. `whence`：起始偏移量：，`SEEK_SET/SEEK_CUP/SEEK_END`
+
+返回值 ：
+
+1. 成功：返回偏移量
+2. 失败：-1，`errno`
+
+应用场景：
+
+1. 文件的读写使用同一偏移位置
+2. 使用lseek获取`int length = lseek(fd, 0, SEET_END);`
+3. 拓展文件大小`int addsize = lseek(fd, 111, SEET_END);`,
+   注意：要想使文件大小真正拓展，必须引起`Io`操作,如下图，`lseek`增加110，写入`a`再加1，总共扩展容量为111
+4. 关于扩展文件大小一个常用函数 ：`int ret = truncate("/daict.cp", 250);`，成功返回0失败返回-1
+
+<img src="linux.assets/1687659966807.png" alt="1687659966807" style="zoom:50%;" />
+
+
+
+
+
+文件的读写使用同一偏移量：
+
+```c
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+
+int main(){
+
+    int fd,n;
+    char msg[] = "this is a test for lseek\n";
+    char ch;
+
+    fd = open("lseek.txt", O_RDWR | O_CREAT, 0644);
+    if(fd<0){
+        perror("open lseek.txt error");
+        exit(1);
+    }
+
+    write(fd, msg, strlen(msg));
+
+    lseek(fd, 0, SEEK_SET); // 文件读写位置在同一位置，需要重置偏移量
+
+    while((n=read(fd, &ch, 1))){  // read函数的第二个参数是指向缓冲区的指针，所以这里需要取地址
+        if(n<0){
+            perror("read error");
+            exit(1);
+        }
+        write(STDOUT_FILENO, &ch, n);
+    }
+
+    close(fd);
+
+
+
+    return 0;
+}
+```
+
+
+
+
+
+#### 传入参数/传出参数
+
+传入参数：
+
+1. 指针作为函数参数
+2. 通常有`const`关键字修饰
+3. 指针指向有效区域，在函数内部作读操作
+
+传出参数：
+
+1. 指针作为函数参数
+2. 在函数 调用之前 ，指针指向的空间可以无意义，但必须有效
+3. 在函数 内部作写操作
+4. 在函数 调用结束后，充当函数返回值 
+
+传入传出参数：
+
+1. 指针作为函数参数
+2. 在函数调用之前 ，指针指向的空间有实际意义
+3. 在函数 内部，先做读操作，后做写操作
+4. 函数调用结束 后，充当函数返回值 
+
+
+
+
+
+### 文件系统 
+
+#### 文件存储
+
+<img src="linux.assets/1687661835547.png" alt="1687661835547" style="zoom:50%;" />
+
+一个文件有文件目录项`dentry`和`inode`两部分组成，inode节点引用计数为0不会删除其指向的磁盘空间内容，磁盘内容只会被 覆盖不会被 删除
+
+#### `stat`函数 
+
+`int stat(const char *path, struct stat *buf);`
+
+参数：
+
+1. `path`
+2. `buf`：（传出参数） 存放文件属性
+
+返回值 ：
+
+1. 成功：0
+
+2. 失败：-1 errno
+
+   
+
+获取文件大小：`buf.st_size`
+获取文件类型：`buf.st_mode`
+获取文件权限：`buf.st_mode`
+
+
+
+```c
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/stat.h>
+
+int main(int argc, char *argv[]){
+
+    struct stat sbuf;
+
+    int ret = stat(argv[1], &sbuf); // int ret = lstat(argv[1], &sbuf);
+    if(ret < 0){
+        perror("stat error");
+        exit(1);
+    }
+    // 获取文件大小
+    printf("file size:%ld\n", sbuf.st_size); // st_size是long int 型
+    // 利用宏函数 判断文件类型
+    if(S_ISREG(sbuf.st_mode)){
+        printf("this is a regular\n");      // 普通 文件
+    }else if(S_ISDIR(sbuf.st_mode)){
+        printf("this is a dir");            // 目录````
+    }else if(S_ISFIFO(sbuf.st_mode)){
+        printf("this is a pipe\n");         // 管道
+    }else if(S_ISLNK(sbuf.st_mode)){
+        printf("this is a sym link\n");     // 软链接
+    }
+    return 0;
+}
+```
+
+#### `lstat`函数 
+
+`stat`会穿透符号链接，`lstat`不会
+
+如对于一个软链接<img src="linux.assets/1687664007454.png" alt="1687664007454" style="zoom: 50%;" />
+
+`int ret = stat(argv[1], &sbuf);`打印结果是常规文件
+
+`int ret = lstat(argv[1], &sbuf);`打印结果是软链接
+
+
+
+关于文件权限说明：`st_mode`
+
+<img src="linux.assets/1687664923616.png" alt="1687664923616" style="zoom:50%;" />
+
+#### `access`函数 
+
+<img src="linux.assets/1687673706096.png" alt="1687673706096" style="zoom:50%;" />
+
+#### `chmod`函数 
+
+<img src="linux.assets/1687673755231.png" alt="1687673755231" style="zoom:50%;" />
+
+#### `link`函数 
+
+创建一个文件的目录项
+
+`unlink`函数 ：删除一个文件的目录项
+
+利用`link+unlink`实现mv
+
+```c
+link(argv[1],argv[2]);
+unlink(argv[1]);
+```
+
+
+
+`unlike`**函数特征**：清除文件时，如果文件的硬链接数为0，没有`dentry`对应，但该文件仍不会被 马上被 释放掉，要等到所有打开该文件的进程关闭该文件，系统 才会挑时间将该文件释放掉（覆写）
+
+
+
+#### 隐式回收
+
+当进程结束运行时，所有该进程打开的文件会被 关闭，申请的内存空间会被释放
+
+
+
+
+
+#### `readlink`函数 
+
+读取符号链接本身内容
+
+`ssize_t readlink(const char *path, char *buf, size_t bufsiz);`成功返回读到的字节数，失败：-1(`error`)
+
+`shall` 中直接`readlink 链接名`
+
+
+
+
+
+#### `rename函数 `
+
+`int rename(const char *oldpath, const char *newpath);`成功：0；失败：-1(`errno`)
+
+
+
+### 目录操作
+
+
+
+#### 文件/目录权限 
+
+目录也是 文件，目录中的文件名叫作目录项（主要是文件名和`inode`两部分）
+
+![1687678340094](linux.assets/1687678340094.png)
+
+#### `getcwd`函数 
+
+获取进程当前工作目录
+
+`char *getcwd(char *buf, size_t size);`成功`buf`保存当前 工作目录位置，失败返回`NULL`
+
+
+
+#### `chdir`函数
+
+改变当前进程的工作目录
+
+`int chdir(const char *path);`成功返回0，失败-1(`errno`)
+
+
+
+#### `opendir`函数
+
+打开一个目录（库函数 ）,`DIR *类似于FILE *`
+
+`DIR * opendir(const char *name);`成功返回指向目录结构体的指针，失败返回`NULL`
+
+
+
+#### `closedir`函数
+
+关闭打开的目录
+
+`int closedir(DIR * dirp);`成功返回0，失败返回-1（`errno`）
+
+
+
+#### `readdir`函数
+
+读取目录(库函数)
+
+`struct dirent *readdir(DIR *dirp);`成功返回目录项结构体指针；失败返回`NULL`,(errno)
+
+<img src="linux.assets/1687678864500.png" alt="1687678864500" style="zoom:33%;" />
+
+实现`ls`
+
+```c
+#include <stdlib.h>
+#include <dirent.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+
+int main(int argc, char *argv[]){
+
+    DIR *dp;
+    struct dirent *sdp;
+
+    dp = opendir(argv[1]);
+    if(dp == NULL){
+        perror("open dir error");
+        exit(1);
+    }    
+
+    while((sdp = readdir(dp))!=NULL){
+        if((strcmp(sdp->d_name,".")==0) || (strcmp(sdp->d_name,"..")==0)){
+            continue;
+        }
+        printf("%s\t", sdp->d_name);
+    }
+    printf("\n");
+
+    closedir(dp);
+
+    return 0;
+}
+```
+
+#### `ls-R`作业
+
+```c
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+
+void file_search( char *name);
+
+void read_dir(char *dir){
+
+    char path[256];
+    struct dirent *sdp;
+    DIR *dp;
+    dp = opendir(dir);
+        if(dp == NULL){
+            perror("opendir error");
+            return ;
+        }
+        while((sdp = readdir(dp))!=NULL){
+            if(strcmp(sdp->d_name,".")==0 || strcmp(sdp->d_name,"..")==0){
+                continue;
+            }
+            // file_search(sdp->d_name); // 这一步导致递归出错 
+            sprintf(path, "%s/%s", dir, sdp->d_name);
+            file_search(path);
+        }
+    closedir(dp);
+    return;
+}
+
+void file_search( char *name){
+    struct stat stap;
+    int ret = 0; 
+    ret = stat(name, &stap);
+    if(ret == -1){
+        perror("stat error");
+        return ;
+    }
+
+    if(S_ISDIR(stap.st_mode)){
+        read_dir(name);
+    }
+    printf("%20s\t\t%ld\n",name,stap.st_size);
+    
+
+
+}
+
+int main(int argc, char *argv[]){
+    if(argc == 1 ){
+        file_search(".");
+    }else{
+        file_search(argv[1]);
+    }
+    return 0;
+}
+```
+
+问题：
+
+1.  不封装`read_dir`函数会提示`sata name 过长`，关于递归过程中的变量生存周期不清楚，`c中的char *`内存是怎么分配的？
+
+ 	2.  要求不显示 `.`文件目录，但结果 还是会在最后显示 
+
+3. 回调函数？
+
+### 重定向(`dup,dup2`)
 
