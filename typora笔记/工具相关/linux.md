@@ -1264,3 +1264,156 @@ int main(int argc, char *argv[]){
 
 ### 重定向(`dup,dup2`)
 
+`duplicate复制`
+
+`int dup(int oldfd);` 成功返回一个新文件描述符； 失败-1`(error)`
+
+`int dup2(int oldfd, int newfd);`成功返回一个新文件描述符； 失败-1`(error)` ,`newfd指向oldfd的文件`
+
+关于`dup2(dupto)`
+
+<img src="linux.assets/1687742738148.png" alt="1687742738148" style="zoom:50%;" />
+
+shell中：`< /<<`
+
+
+
+`使用fctnl达到同样的效果`
+
+<img src="linux.assets/1687744344786.png" alt="1687744344786" style="zoom:50%;" />
+
+
+
+
+
+
+
+## 进程
+
+### 进程，程序 ，`cpu`
+
+程序：只占用磁盘空间														-----剧本
+
+进程：运行起来的程序 ，占用内存，`cpu`等系统 资源		-----戏
+
+并发：以`cpu`运行速度为基础，分时复用`cpu`
+
+<img src="linux.assets/1687745526689.png" alt="1687745526689" style="zoom:33%;" />
+
+`cpu`
+
+![1687745764279](linux.assets/1687745764279.png)
+
+ 对于32位系统 ，寄存器大小为4个字节（1个字节8位），64 -> 8字节
+
+（`MMU`）虚拟内存映射单元
+
+### 虚拟内存和物理内存的映射关系
+
+4G的大小是32位操作系统 决定的，64位操作系统 的大小是2^64
+
+![1687746734240](linux.assets/1687746734240.png)
+
+不同进程的内核共享一块物理地址
+
+MMU`分级访问权限
+
+<img src="linux.assets/1687746904893.png" alt="1687746904893" style="zoom:33%;" />
+
+从用户级切换到内核级耗时大，就是这项分级需要授权全局访问权限 
+
+
+
+### `pcb`进程控制块
+
+查看进程id：`ps aux`
+
+
+
+pcb进程块包含的内容：
+
+1. 进程切换时需要保存和恢复的cpu寄存器
+2. 进程 状态：初始，就绪，运行，挂起，终止态
+3. 描述虚拟地址空间的信息
+4. 当前 进程的工作目录
+5. 文件描述表，指向`file`结构体
+6. 用户id,组id 
+7. 信号相关资源信息
+
+<img src="linux.assets/1687748074893.png" alt="1687748074893" style="zoom:50%;" />
+
+环境变量：一般在3G左右区域，在kernel下方挨着
+
+`env`：查看所有环境变量，`echo $..` ：查看某一环境变量
+
+`PATH`：纪录可执行文件位置
+
+`SHELL`：解释命令
+
+`TREM`：当前 终端类型，决定一些程序 的输出显示 方式
+
+`LANG`：字符编码，时间，货币等信息的显示格式
+
+
+
+
+
+### `fork`函数
+
+`pid_t fork(void);`
+
+若`fork`成功父进程返回子进程id,子进程返回0
+
+`fork`之前 的代码只执行一次，之后 的代码父子进程各执行一次
+
+![1687752945548](linux.assets/1687752945548.png)
+
+`pip_t getpid(void);`获取 自己的pid
+
+`pip_t getppid(void);`获取 父进程id
+
+***循环创建子进程***
+
+```c
+int main()
+{
+
+    int i;
+    pid_t pid;
+    for (i = 0; i < 5; ++i)
+    {
+        if (fork() == 0)
+        {
+            break;
+        }
+    }
+
+    if (i == 5)
+    {
+        sleep(1);
+        printf("i am parent\n");
+    }
+    else
+    {
+        printf("i am %dth chile\n", i + 1);
+    }
+
+    return 0;
+}
+```
+
+**进程共享**
+
+读时共享写时复制（父进程写时拿到的也是 复制品，子进程再访问是初始值 ，不是父进程写入的值 ，哪怕是全局变量）
+
+<img src="linux.assets/1687755733789.png" alt="1687755733789" style="zoom:50%;" />
+
+fork后父子进程执行顺序不确定，取决于内核所使用的调度算法
+
+**父子进程`gdb`调试**
+
+<img src="linux.assets/1687763018347.png" alt="1687763018347" style="zoom:33%;" />
+
+`set follow-fork-mode child`
+
+`set follow-fork-mode parent`（默认）
