@@ -1326,7 +1326,7 @@ MMU`分级访问权限
 
 ### `pcb`进程控制块
 
-查看进程id：`ps aux`
+查看进程id：`ps aux`  / `ps ajx`
 
 
 
@@ -1417,3 +1417,163 @@ fork后父子进程执行顺序不确定，取决于内核所使用的调度算�
 `set follow-fork-mode child`
 
 `set follow-fork-mode parent`（默认）
+
+<img src="linux.assets/1687763570451.png" alt="1687763570451" style="zoom:50%;" />
+
+
+
+
+
+### `exec`	函数族
+
+ <img src="linux.assets/1687764028170.png" alt="1687764028170" style="zoom:50%;" />
+
+`exec函数族`指定子进程执行的内容，子进程Pid不会改变，但执行的内容改变了
+
+**`execl`函数**
+
+`int execl(const char *path, const char *arg,..);`
+
+```c
+execl("./a.out", "./a.out", NULL);
+
+// 用execl 执行ls
+execl("/bin/ls", "/bin/ls", "-l", NULL);
+```
+
+
+
+**`execlp函数`** 
+
+`int execlp(const char *file, const char *arg,..);`
+
+借助`PATH`环境变量加载一个进程，成功无返回，失败返回-1，一般用来调用系统程序 (`ls,date,cp,cat`)
+
+```c
+if(pid == 0){ // 如果是子进程执行以下操作
+    
+   // execlp("ls", "-l", "-d", "-h", NULL);  // 错误版本，第二个形参 是从argv[0]开始的
+    
+    execlp("ls", "ls", "-l", "-h", NULL); // 若execlp执行成功下面的语句不会执行，执行程序 己改变
+    perror("exec error");
+    exit(1);
+}else if(pid > 0){
+    sleep(1);
+    printf("this is parent process\n");
+}
+```
+
+打印进程信息到文件中：
+
+```c
+int main()
+{
+
+    int fd; 
+    fd = open("ps.out", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if(fd < 0){
+        perror("open error");
+        exit(1);
+    }
+
+    dup2(fd, STDOUT_FILENO);
+
+    execlp("ps", "ps", "aux", NULL);
+    perror("execlp error");
+
+    close(fd); // 若execlp执行成功，close不会被 执行，依赖系统 自动回收
+
+    return 0;
+}
+```
+
+
+
+其他`exec`函数（了解）<img src="linux.assets/1687766236302.png" alt="1687766236302" style="zoom:33%;" />
+
+```c
+// char *const argv[]; 的传参方法
+char *argv[] = {"ls", "-l", NULL};
+execvp("ls", argv)；
+```
+
+**`exec`函数族的一般规律**
+
+执行成功，其下面的代码不会被 执行
+
+
+
+### 回收子进程
+
+孤儿进程：父进程先结束，子进程的父进程变为`init`（用于回收）
+
+僵尸进程：子进程终止，父进程【可能 一直在循环】尚未回收子进程（回收`pcb`）,`kill`父进程，让`init`接管消除僵尸子进程, `kill`命令对僵尸进程无效
+
+![1687767494755](linux.assets/1687767494755.png)
+
+****
+
+
+
+#### **`wait`函数：**
+
+`pid_t wait(int *status);`
+
+一次`wait/waitpid`函数调用只能回收一个子进程，`wait`无差别回收先结束 的子进程
+
+返回值 ：
+
+​	成功：返回清理掉的子进程id
+
+​	失败：-1(没有子进程)，
+
+函数作用：
+
+1. 阻塞等待子进程退出 
+2. 清理子进程残留在内核 的`pcb`资源（用户空间会直接释放 ）
+3. 通过传出参数，得到子进程结束状态，`status`是传出函数用来进一步判断子进程的相关状态
+
+获取子进程正常终止值 ：
+
+​	`WIFEXITED(status)`  为真 -> 调用 `WEXITSTATUS(status)` -> 得到子进程退出值
+
+获取子进程异常终止信号：
+
+​	`WIFSIGNALED(status)` 为真 -> 调用 `WTERMSIG(status)` -> 得到 导致子进程异常终止的信号编号
+
+![1687770521216](linux.assets/1687770521216.png)
+
+
+
+#### **`waitpid`函数**
+
+`pid_t  waitpid(pid_t pid, int *status, int options);`
+
+参数：
+
+* `pid_t pid`：要回收的子进程`id`，特别的：
+
+​			-1 表示 回收任意子进程
+
+​			0 表示回收和当前调用`waitpid`一个组的任意子进程
+
+​			<-1 回收指定进程组内的任意子进程
+
+<img src="linux.assets/1687777693443.png" alt="1687777693443" style="zoom: 25%;" />
+
+* `status`：（传出） 回收进程的状态
+
+* `options`：`WNOHANG`指定回收方式为非阻塞
+
+返回值 ：
+
+* \>0：表示 成功回收的子进程id
+
+* 0：函数调用时，参数3指定了`WNOHANG`，并且没有子进程结束
+
+* -1：失败，设置`errno`
+
+
+
+小结：`wait/waitpid`，一次调用回收一个子进程，回收多个用循环  
+
