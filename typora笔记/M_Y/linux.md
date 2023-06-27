@@ -1,4 +1,4 @@
-
+ 
 
 # 杂项
 
@@ -9,7 +9,20 @@
 
 **`ip`地址**：`47.113.150.236`
 
+## `linux`文件类型
 
+占用磁盘资源的：
+
+1. 普通 文件
+2. 软链接
+3. 目录
+
+不占用磁盘空间的伪文件：
+
+1. 字符设备
+2. 块设备 
+3. 管道
+4. 套接字
 
 # linux命令操作
 
@@ -1274,7 +1287,7 @@ int main(int argc, char *argv[]){
 
 <img src="linux.assets/1687742738148.png" alt="1687742738148" style="zoom:50%;" />
 
-shell中：`< /<<`
+shell中：`> />>`
 
 
 
@@ -1563,7 +1576,7 @@ execvp("ls", argv)；
 
 * `status`：（传出） 回收进程的状态
 
-* `options`：`WNOHANG`指定回收方式为非阻塞
+* `options`：`WNOHANG`指定回收方式为非阻塞,0表示阻塞
 
 返回值 ：
 
@@ -1575,5 +1588,346 @@ execvp("ls", argv)；
 
 
 
-小结：`wait/waitpid`，一次调用回收一个子进程，回收多个用循环  
+小结：`wait/waitpid`，一次调用回收一个子进程，回收多个用循环  `waitpid(-1, &status, 0) == wait(&status);`
+
+回收多个子进程：
+
+```c
+
+```
+
+
+
+
+
+
+
+### 进程间通信方式
+
+`ipc	(InterProcess Communication)`	进程间通信
+
+<img src="linux.assets/1687824972357.png" alt="1687824972357" style="zoom: 25%;" />
+
+进程间通信的方式：
+
+1. 管道：使用最简单，要求有血缘关系
+2. 信号： 开销最小，速度快，共享数据量有限 
+3. 共享映射区：无血缘关系
+4. `socket`本地 套接字：最稳定，实现复杂度高
+
+
+
+#### 管道
+
+伪文件，存在于内核 缓冲区
+
+局限性：（环形队列 实现的，有以下局限性）
+
+1. 数据不能自己写，自己读
+2. 不可反复读取，管道的数据 一次性
+3. 双向半双工通信，数据 只能在单方向上流动
+4. 只能在有公共祖先的进程间使用管道
+
+**创建并打开管道：**
+
+​	`int pipe(int fd[2]);` 成功返回0，失败-1 设置`errno`
+
+​	参数：
+
+  		1. `fd[0]`：读端(`stdin , 系统 从缓冲区接收数据 )`
+    		2. `fd[1]` ：写端
+
+**管道的读写行为：**
+
+读管道：
+
+1. 管道有数据，`read`返回实际读到的字节数、
+2. 管道无数据 ：
+   1. 无写端：`read`返回0（类似讲到文件末尾）
+   2. 有写端：`read`阻塞等待
+
+写管道：
+
+1. 无读端：异常终止(`SIGPIPE`导致的)
+2. 有读端：
+   1. 管道已满：阻塞等待
+   2. 管道未满：返回写出的字节个数 
+
+
+
+实现`ls | wc-l`
+
+```c
+int main(){
+
+    int fd[2];
+    int ret;
+    pid_t pid;
+
+    ret = pipe(fd);  // 先创建管道，父子进程同时拥有读写端
+    if(ret == -1){
+        perror("pipe error");
+        exit(1);
+    }
+
+    pid = fork();
+    if(pid > 0){
+        // 父进程    
+       close(fd[0]);
+       dup2(fd[1], STDOUT_FILENO);
+       execlp("ls","ls",NULL);
+       perror("ls error");
+       exit(1);
+    
+    }else if(pid == 0){
+        // 子进程
+        close(fd[1]);
+        dup2(fd[0], STDIN_FILENO);
+        execlp("wc","wc","-l", NULL);        
+        perror("wc error");
+        exit(1);
+
+    }else{
+        perror("fork error");
+        exit(1);
+    }
+```
+
+如果出现 父进程先结束的 显示 情况，可以父子进程的代码内容换一下，子进程阻塞等待一定后结束 
+
+兄弟进程间通信
+
+```c
+    int fd[2];
+    int ret, i;
+    pid_t pid;
+
+    ret = pipe(fd);  // 先创建管道，父子进程同时拥有读写端
+    if(ret == -1){
+        perror("pipe error");
+        exit(1);
+    }
+
+    for(i = 0; i<2; ++i){
+        ret = fork();
+        if(ret == -1){
+            perror("fork error");
+            exit(1);
+        }else if(ret == 0){
+            break;
+        }
+
+    } 
+
+    if(i == 2){
+        // 父进程；需要把读写端关闭
+        close(fd[1]);
+        close(fd[0]);
+        wait(NULL);
+        wait(NULL);
+    }
+
+    if(i == 0){
+        // 子进程1
+        close(fd[0]);
+        dup2(fd[1], STDOUT_FILENO);
+        execlp("ls","ls",NULL);
+        perror("ls error");
+        exit(1);
+
+    }else if(i == 1){
+        // 子进程2
+        close(fd[1]);
+        dup2(fd[0], STDIN_FILENO);
+        execlp("wc", "wd", "-l", NULL);
+        perror("wc error");
+        exit(1);
+    }
+    
+```
+
+查看管道大小:`ulimit -a` 
+
+
+
+
+
+### `fifo`有名管道
+
+用于两个没有血缘关系的进程间通信,是文件操作，读写端的操作通过`read`， `write`函数 实现
+
+`int mkfifo(const char *pathname, mode_t mode);`
+
+参数：
+
+​	`mode_t mode` :文件权限 如0644
+
+​	 头文件：`unistd.h` ,`sys/stat.h`
+
+返回值 ：
+
+​	成功返回0
+
+​	失败返回-1，设置`errno`
+
+
+
+**补充**：无血缘关系的两个进程可以打开同一个文件进行通信
+
+
+
+### 共享存储映射 `I/O`
+
+将磁盘文件映射 到内存中
+
+#### `mmap`函数 
+
+`void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);`创建共享内存映射 
+
+参数：
+
+​	`addr`：指定映射区的首地址，通常传`NULL`，系统自动分配
+
+​	`lentgh`：共享内存映射区的大小（`<= 创建的文件大小`）
+
+​	`prot`：共享映射区的读写属性，`PROT_READ, PROT_WRITE, PROT_READ | PROT_WRITE`
+
+​	`flags`： 标注共享内存的共享属性，	`MAP_SHARED, MAP_PRIVATE`，前者表示 对内存的修改会反映到磁盘上，后者相					反	
+
+​	`fd`：用于创建共享内存映射区的那个文件的文件描述符
+
+​	`offset`：偏移位置，`4k（page）`的整数倍，默认0
+
+返回值 ：
+
+​	成功：映射区的首地址
+
+​	失败：返回一个宏`MAP_FAILED（void *(-1)）`, 设置`errno`
+
+
+
+##### `mumap` 函数 
+
+​	`int munmap(void *addr, size_t length);` 释放映射区
+
+​	`addr : mmap` 的返回值 
+
+​	`length` ： 大小
+
+
+
+```c
+#include <fcntl.h>
+#include <sys/mman.h>
+
+
+int main(int argc, char *argv[]){
+
+    char *p = NULL;
+    int fd;
+    fd = open("da.txt", O_RDWR | O_CREAT | O_TRUNC, 0644);
+    if(fd == -1){
+        perror("open error");
+        exit(1);
+    }
+
+    ftruncate(fd,20);
+
+    int length = lseek(fd, 0, SEEK_END);
+
+    p = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if(p == MAP_FAILED){
+        perror("mmap error");
+        exit(1);
+    }
+
+    // 使用p对文件进行读写操作
+    strcpy(p, "hello mmap"); // 写操作
+
+    printf("--------%s\n", p); // 读操作 
+
+    int ret = munmap(p, length);
+    if(ret == -1){
+        perror("munmap error");
+        exit(1);
+    }
+    
+    return 0;
+}
+```
+
+##### `mmap`注意事项
+
+	1. 用于创建映射区的大小为0，实际指定非0大小创建映射区，出总线错误
+ 	2. 用于创建映射 区的文件大小为0，实际制定0大小创建映射区，出无效参数错误
+ 	3. 用于创建映射 区的文件读写属性为只读，映射 区属性为读，写，出无效参数错误
+ 	4. 创建映射区需要读`read`权限 ，`mmap`的读写权限应该 <= 文件的`open`权限（映射权限为私有时可以>，但要有`open`读权限 ） ， 只写是不行的
+ 	5. 文件描述符`fd`在`mmap`创建映射完成后即可关闭，后续访问文件用地址访问
+ 	6. `offset`必须是4096的整数倍，（`MMU`映射 的最小单位）
+ 	7. 对申请的映射区内存，不能越界访问
+ 	8. `munmap`用于释放的地址必须是`mmap`申请 的地址 
+ 	9. 映射区的访问权限 为`MAP_PRIVATE`，对内存做的所有修改只在内存有效，不会反映在物理磁盘上
+
+`mmap`函数 的保险调用方法：
+
+	1. `fd = open("", O_RDWR);`
+ 	2. `mmap(NULL, 有效文件大小，PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);`
+
+ 
+
+
+
+#### `mmap`父子进程间通信
+
+1. 先创建映射区指定`MAP_SHARED`权限 再`fork`
+2. 一个进程读，一个进程写
+
+![1687866278312](./linux.assets/1687866278312.png)
+
+![1687866289965](./linux.assets/1687866289965.png)
+
+#### `mmap`无血缘关系进程间通信
+
+1. 两个进程的打开同一个文件，创建映射 区
+2. 指定`MAP_SHARED`
+3. 一个进程写入，另外 一个进程读出
+
+**注意**：无血缘关系进程间的通信，`mmap`数据可以重复，`fifo`数据只能一次读取
+
+写端：
+
+![1687868348241](linux.assets/1687868348241.png)
+
+读端
+
+![1687868364125](linux.assets/1687868364125.png)
+
+
+
+ 
+
+
+
+#### 匿名映射区
+
+无需再创建打开文件,`MAP_ANNO`
+
+只适用于有血缘关系的进程
+
+
+
+
+
+##    信号
+
+ 信号的共性：
+
+1. 简单
+2. 不能携带大量信息
+3. **满足条件才发送**
+
+信号的特质：
+
+​	信号是软件层面上的“中断”，一旦信号产生，无论程序执行到什么位置，必须 立即停止运行，处理信号，处理结束 再继	续执行后续指令。
+​	所有信号的产生及处理全部都是由 **内核** 完成的。
 
