@@ -2036,18 +2036,22 @@ kill -9 -pid # 杀死pid组的所有进程，（父子进程一般属于同一�
 * 参数：`seconds` ：定时秒数
 
 * 返回值 ：上次定时剩余时间，无错误现象
+* 常用`alarm(0)`取消闹钟
 
 `time`：命令
 
-​				查看程序执行时间，实际时间 = 用户时间+内核时间+等待时间 -> 优化瓶颈 `IO`
+* 查看程序执行时间，实际时间 = 用户时间+内核时间+等待时间 -> 优化瓶颈 `IO`
 
 `setitimer`函数
 
 * `int setitimer(int which, const struct itimerval *new_value, struct itimerval *old_value);`
 
-* 
+* 参数：
+  *  `which`：`ITTIMER_REAL`：采用自然计时 产生信号：`SIGALRM`；	`ITTIMER_VIRTUAL`：采用用户空间计时产生信号：`SIGVTALRM`；	`ITTIMER_PROF`:采用内核+用户空间计时产生信号:`SIGPROF`
+  * `new_value`：传入参数；定时秒数
+  * `old_value`：付出参数，上次定时剩余秒数
 
-3. 返回值 ：成功0；失败-1`errno`
+* 返回值 ：成功0；失败-1`errno`
 
 查看计算机一秒内计数能力
 
@@ -2061,7 +2065,437 @@ int main(int argc, char *argv[]){
         printf("%d\n", i);
     }
     
+   // 用setitimer实现
+  //  struct itimerval new_t;
+  //  struct itimerval old_t;
+    
+ //   new_t.it_interval.tv_sec = 0; 	//周期/间隔时间
+ //   new_t.it_interval.tv_usec = 
+ //   new_t.it_value.tv_sec = 1; 		// 定时时间
+ //   new_t.it_value.tv_usec = 0; 
+	
+ //   int ret = setitimer(&new_t, &old_t);
+    
     return 0;
 }
 ```
 
+
+
+#### `pcb`信号集操作
+
+##### 信号集操作函数  
+
+- `sigset_t` set; 自定义信号集
+- `sigemptyset(sigset_t *set)`; 清空信号集,全置为0
+- `sigfillset(sigset_t *set)`; 全部置为1
+- `sigaddset(sigset_t *set, int signum);` 将一个信号添加到集合中
+- `sigdelset(siget_t *set, int signum);` 将一个信号从集合中移除
+- `sigismember(sonst sigset_t *set, int sigum);` 判断一个信号是否在集合中，在返回1，不在返回0
+
+##### 设置信号屏蔽字和解除屏蔽，
+
+​	`int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);`
+
+* how:
+  * `SIG_BLOCK`：设置阻塞，将自定义的set和pcb控制块中的set作位或操作
+  * `SIG_UNBLOCK`：取消阻塞
+  * `SIG_SETMASK`：用自定义set替换mask.
+* set：自定义set
+* oldset：旧有的mask,传出参数，用于保存原有的信号信息
+* 返回值 ：成功0，失败-1(errno)
+
+
+
+##### 查看未决信号集，
+
+​	`int sigpending(sigset_t *set);`
+
+* set：传出 的未决 信号集
+* 返回值 ：成功0，失败-1(errno)
+
+##### 例 ：
+
+```c
+#include <signal.h>
+
+void print_set(sigset_t *set_p)
+{
+    for (int i = 0; i < 32; i++)
+    {
+        if (sigismember(set_p, i))
+        {
+            putchar('1');
+        }
+        else
+        {
+            putchar('0');
+        }
+
+    }
+    printf("\n");
+}
+
+int main(int argc, char *argv[])
+{
+
+    sigset_t set, oldset, pedset;
+
+    sigemptyset(&set); //
+    sigaddset(&set, SIGINT); // 屏蔽 ctrl + c
+
+    int ret = sigprocmask(SIG_BLOCK, &set, &oldset);//
+    if (ret == -1)
+    {
+        perror("procmask error");
+        exit(1);
+    }
+
+    while (1)
+    {
+        ret = sigpending(&pedset); //
+        if (ret == -1)
+        {
+            perror("sigpending error");
+            exit(1);
+        }
+
+        print_set(&pedset);
+    }
+
+    return 0;
+}
+```
+
+
+
+#### 信号捕捉
+
+##### `signal`函数
+
+关于 `typedef void (*sighandler_t)(int);`,是一个类型定义语句，用于定义一个名为`sighandler_t`的新类型，该类型是一个函数指针类型，指向具有`void`返回类型的和一个`int`类型参数的函数 
+
+```c
+#include <signal.h>
+
+
+void sig_catch(int signo){
+    printf("catch you!!! %d\n", signo);
+    return;
+}
+
+int main(int argc, char *argv[]){
+
+    signal(SIGINT, sig_catch); // 注册
+
+    while(1);
+
+    return 0;
+}
+```
+
+##### `sigaction`函数（*）
+
+`int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact); `
+
+```c
+#include <signal.h>
+
+
+void sig_catch(int signo){      // 捕捉函数 / 回调函数，回调者是内核 
+    printf("catch you!!! %d\n", signo);
+    sleep(10); // 增加执行时间，在时间内多次执行同样的被捕捉信号只有第一次有效，因为设置了flags = 0;从显示上				 来看会执行再次printf
+    return;
+}
+
+int main(int argc, char *argv[]){
+
+    struct sigaction act, oldact;
+    act.sa_handler = sig_catch;  // 设置回调函数
+    sigemptyset(&act.sa_mask);   // 设置清空sa_mask（仅在回调函数执行期间有效）
+    // 要屏蔽其他信号在这里加上 sigaddset(&act.sa_mask, SITQUIT);
+    act.sa_flags = 0;            // 默认设置：捕捉到该信号后阻塞该信号
+
+    int ret = sigaction(SIGINT, &act, &oldact);     // 注册信号捕捉函数 
+    if(ret == -1){
+        perror("sigactin error");
+        exit(1);
+    }
+    
+    ret = sigaction(SIGQUIT, &act, &oldact);     // 注册信号捕捉函数 
+
+    while(1);
+
+    return 0;
+}
+```
+
+
+
+##### 信号捕捉特性
+
+1. 捕捉函数 执行期间，信号屏蔽字由mask -> sa_mask， 捕捉函数执行结束，恢复加mask
+2. 捕捉函数执行期间，本信号自动被屏蔽(sa_flags = 0)
+3. 捕捉函数执行期间；被屏蔽信号多次发送，解除屏蔽后排除的信号只处理一次
+
+内核实现信号捕捉过程：
+
+<img src="linux.assets/1688003968527.png" alt="1688003968527" style="zoom:50%;" />
+
+#### `SIGCHLD`信号
+
+```c
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <signal.h>
+
+
+void sig_catch(int signo){      // 捕捉函数 / 回调函数，回调者是内核 
+    
+    pid_t pid;
+    int status;
+    // pid = wait(NULL);
+     while((pid = waitpid(-1, &status, 0)) != -1){ // 循环回收子进程，防止僵尸进程在多次调用回调函数间出														现，也解决信号阻塞后不排队的问题 
+       
+        if(WIFEXITED(status)){
+  	  	    printf("------------catch child pid%d, ret = %d\n",pid, WIFEXITED(status));
+        }
+        
+      	//  if(WIFEXITED(status)){
+  	  	//    printf("------------catch child pid%d, ret = %d\n",pid, WIFEXITED(status));
+        //	}
+    }
+
+    return;
+}
+
+int main(int argc, char *argv[]){
+    pid_t pid;
+// 在父进程注册捕捉函数 之前 阻塞 SIGCHLD信号
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGCHLD);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+//
+    
+    int i;
+    for(i = 0; i<5; ++i){
+        if((pid = fork()) == 0){ // 子进程break
+            break;
+        }else if(pid < 0){
+            perror("fork error");
+            exit(1);
+        }
+    }
+
+    if(i = 5){
+        // 父进程
+        struct sigaction act;
+        act.sa_handler = sig_catch;  //  设置捕捉函数 不需要在sig_catch后加()
+        sigemptyset(&act.sa_mask);
+        act.sa_flags = 0;
+        sigaction(SIGCHLD, &act, NULL);
+
+// 解除阻塞 ， 不解除 回调函数 没有执行机会
+        sigprocmask(SIG_UNBLOCK, &set, NULL);
+//
+        
+        printf("parent pid = %d\n", getpid());
+ 
+        while(1);
+
+    }else{
+        // 子进程
+       // sleep(1); // 防止父进程中还注册捕捉函数，子进程就死亡的情况
+        printf("child pid = %d\n", getpid());
+    }
+
+    return 0;
+}
+```
+
+
+
+
+
+## 守护进程
+
+### 概念	 -> 	
+
+进程组与会话：创建新会话时，抛弃原有终端，新会话无终端  -> 守护进程
+
+守护进程：`daemon`进程
+
+* 通常运行与操作系统 后台，脱离控制终端，一般不与用户直接交互
+* 同期性的等待某个事件发生或周期性执行某一动作
+* 不受用户登录注销影响(退出终端无用)
+* 通常采用以d结尾的命名方式
+
+### 创建守护进程模型
+
+1. `fork`子进程，让父进程终止
+2. 子进程调用`setsid()`，创建新会话
+3. 通常根据需要，改变工作目录位置`chdir()`，防止目录被卸载
+4. 通常根据需要，重设`umask`文件权限掩码，影响新文件的创建权限
+5. 通常根据需要，关闭/重定向 文件描述符
+6. 守护 进程业务逻辑 `while()`
+
+```c
+#include <sys/stat.h>
+
+
+int main(int argc, char *argv[]){
+
+    //// 1. 调用fork函数,终止父进程
+    pid_t pid;
+    pid = fork();
+    int fd,ret;
+
+    if(pid > 0){
+        // 正常终止父进程
+        exit(0);
+    }
+
+    //// 2. 创建新会话
+    pid = setsid();
+    if(pid == -1){
+        perror("setsid error");
+    }
+
+    //// 3. 改变工作目录位置
+    ret = chdir("/home/dai");
+    if(ret == -1){
+        perror("chdir error");
+    }
+
+    //// 4. 设置umask掩码
+    umask(0022); // 755
+    
+    //// 5. 关闭或重定向文件描述符
+    close(STDIN_FILENO);
+    fd = open("/dev/null", O_RDWR);
+    if(fd == -1){
+        perror("open error");
+    }
+
+    dup2(fd, STDOUT_FILENO);
+    dup2(fd, STDERR_FILENO);
+
+    //// 6. 业务逻辑
+    while(1); 
+
+    return 0;
+}
+```
+
+
+
+##  线程
+
+#### 线程与进程
+
+进程：有独立的进程地址空间，有独立的pcb
+
+线程：没有独立的进程地址空间，有独立的pcb
+
+两者区别：是否共享地址空间
+
+<img src="linux.assets/1688036363243.png" alt="1688036363243" style="zoom:50%;" />
+
+
+
+`linux`下：
+
+* 线程是`cpu`最小的执行单位,对于 `cpu`来说，线程就是进程
+* 进程是最小分配资源单位（可以看成只有一个线程的进程）
+
+查看线程号（`LWP`）(cpu执行的最小单位)：`ps -Lf 进程id`
+
+<img src="linux.assets/1688040037952.png" alt="1688040037952" style="zoom:50%;" />
+
+
+
+#### 线程共享与独享 
+
+* 独享：栈空间（用户栈，内核栈）
+* 共享：`./text ./data ./rodata ./bsss  heap  ---> 共享全局变量（errno除外）`
+
+
+
+#### 线程控制原语
+
+`pthread_t pthread_self(void);`：获取线程id，线程id是在进程地址空间内部用来标识线程身份的id号
+
+* 返回本线程id
+* 类似进程的`getpid();`
+
+`int pthread_create(pthread_t *pid, const pthread_attr_t *attr, void *(start_rountn)(void *), void *arg );`
+
+* `*pid`：付出参数，表新创建的子线程id
+* `*attr`：线程属性，传`NULL`使用默认属性
+* `void *(start_rountn)(void *)`：回调函数 
+* `*arg`：回调函数 的参数
+* 返回值 ：成功0；失败`errno`
+* 注意：参数4地址传递的问题：传地址到回调函数 ，再次取地址时其内容已经变了(i++)，【回调函数 有一个用户到内核态的切换，很耗时】
+  * <img src="linux.assets/1688047546305.png" alt="1688047546305" style="zoom:33%;" />
+
+
+
+
+
+`void pthread_exit(void * retval);`：退出当前线程
+
+* retval：退出值 ，无退出值 NULL
+* 注意与exit(),return;的区别
+  * exit() ： 退出当前进程
+  * return : 返回调用者位置
+
+```c
+#include <pthread.h>
+
+void *tfn(void *arg){
+   
+    int i = (int)arg;
+    sleep(i);
+
+    if(i == 2){
+        // exit(0); // 正常退出 ，但退出的是进程，所有线程都会被 退出 ，用return 可以（返回到函数调用者，不是退出 的意思  ）
+        pthread_exit(NULL); // 退出当前线程 
+
+    }
+
+    printf("this is %dth pthread\tpid = %d\ttid = %lu\n", i+1, getpid(), pthread_self());
+    return NULL;
+}
+
+int main(int argc, char *argv[]){
+
+    int i, ret;
+    pthread_t tid;
+
+    for(i = 0; i<5; i++){
+        ret = pthread_create(&tid, NULL, tfn, (void *)i);   // 这里不能传地址，原因如图
+        if(ret != 0){
+            perror("pthread_create error");
+        }
+    }
+
+    printf("this is %dth pthread\tpid = %d\ttid = %lu\n", i+1, getpid(), pthread_self());
+
+    // sleep(i);
+    // return 0;
+
+    pthread_exit((void* )0); // 退出主线程，不会其他线程
+}
+```
+
+
+
+* 
+  
