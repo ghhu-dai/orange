@@ -2421,33 +2421,51 @@ int main(int argc, char *argv[]){
 
 
 
+##### 线程控制 原语和进程控制原语
+
+![1688096168104](linux.assets/1688096168104.png)
+
+
+
+
+
 #### 线程共享与独享 
 
 * 独享：栈空间（用户栈，内核栈）
-* 共享：`./text ./data ./rodata ./bsss  heap  ---> 共享全局变量（errno除外）`
+* 共享：`./text ./data ./rodata ./bsss  heap（共享堆区）  ---> 共享全局变量（errno除外）`
 
 
 
 #### 线程控制原语
+
+##### `pthread_self`函数
 
 `pthread_t pthread_self(void);`：获取线程id，线程id是在进程地址空间内部用来标识线程身份的id号
 
 * 返回本线程id
 * 类似进程的`getpid();`
 
+
+
+##### `pthread_create`函数
+
 `int pthread_create(pthread_t *pid, const pthread_attr_t *attr, void *(start_rountn)(void *), void *arg );`
 
 * `*pid`：付出参数，表新创建的子线程id
+
 * `*attr`：线程属性，传`NULL`使用默认属性
+
 * `void *(start_rountn)(void *)`：回调函数 
+
 * `*arg`：回调函数 的参数
+
 * 返回值 ：成功0；失败`errno`
-* 注意：参数4地址传递的问题：传地址到回调函数 ，再次取地址时其内容已经变了(i++)，【回调函数 有一个用户到内核态的切换，很耗时】
-  * <img src="linux.assets/1688047546305.png" alt="1688047546305" style="zoom:33%;" />
+
+  
 
 
 
-
+##### `pthread_exit`函数
 
 `void pthread_exit(void * retval);`：退出当前线程
 
@@ -2465,7 +2483,7 @@ void *tfn(void *arg){
     sleep(i);
 
     if(i == 2){
-        // exit(0); // 正常退出 ，但退出的是进程，所有线程都会被 退出 ，用return 可以（返回到函数调用者，不是退出 的意思  ）
+        // exit(0); // 正常退出 ，但退出的是进程，所有线程都会被 退出 ，用return 可以（返回到函数调用者，不																				是退出 的意思  ）
         pthread_exit(NULL); // 退出当前线程 
 
     }
@@ -2480,6 +2498,9 @@ int main(int argc, char *argv[]){
     pthread_t tid;
 
     for(i = 0; i<5; i++){
+        
+        // 注意
+        // 注意：参数4地址传递的问题：传地址到回调函数 ，再次取地址时其内容已经变了(i++)，【回调函数 有一个用			户到内核态的切换，很耗时】
         ret = pthread_create(&tid, NULL, tfn, (void *)i);   // 这里不能传地址，原因如图
         if(ret != 0){
             perror("pthread_create error");
@@ -2495,7 +2516,518 @@ int main(int argc, char *argv[]){
 }
 ```
 
+<img src="linux.assets/1688047546305.png" alt="1688047546305" style="zoom:33%;" />
 
 
-* 
+
+
+
+
+
+##### `pthread_join`函数
+
+`int pthread_join(pthread_t thread, void **retval);`阻塞等待线程退出，回收线程，类似`waitpid()`函数
+
+* thread ： 要回收的线程id
+* void **retval：要回收的线程返回值 
+
+```c
+#include <pthread.h>
+
+struct thrd{
+    int var;
+    char str[];
+};
+
+
+// void *tfn(void *arg){
+   
+//     struct thrd tval;    // 局部变量地址，不可做返回值 
+//     tval.var = 100;
+//     strcpy(tval.str, "hello pthread");
+
+//     return (void *)&tval;
+// }
+
+void *tfn(void *arg){
+    struct thrd *tval = (struct thrd *)arg;
+    tval->var = 100;
+    strcpy(tval->str, "hello thread");
+
+    return (void *)tval;
+   
+}
+
+
+
+int main(int argc, char *argv[]){
+
+    pthread_t tid;
+    struct thrd arg;    // creat 用
+    struct thrd *retval;    // join 用
+    int ret = pthread_create(tid, NULL, tfn, (void *)&arg);
+    if(ret != 0){
+       // perror("pthread_creat error"); 线程中的检查错误统一用下面的形式
+        fprintf(stderr, "pthread_create error: %s\n", strerror(ret));
+    }
+
+    ret = pthread_join(tid, (void **)&retval);
+    if(ret != 0){
+        perror("pthread_join error");
+    }
+
+    pthread_exit(NULL);
+    
+}
+```
+
+
+
+
+
+##### `pthread_detach`函数 
+
+`int pthread_detach(pthread_t thread);` ： 设置线程分离
+
+* thread：待分离的线程id
+* 返回值 ：成功0，失败errno
+
+
+
+##### `pthread_cancel`函数
+
+ `int pthread_cancel(pthread_t thread);`：杀死一个线程，需要取消点/保存点
+
+* thread：待杀死的线程id
+* 成功0，失败errno
+* 注意
+  * 如果线程没有达到取消点，那么pthred_cancel无效，此时需要手动添加：`pthread_testcancel()`;
+  * 被pthread_cancel杀死的线程，返回-1，表非正常死亡 ，可以用pthread_join回收
+
+
+
+#### 线程属性
+
+利用线程属性设置线程分离态
+
+```c
+void *tfn(void *arg){
+    return NULL;
+}
+
+
+
+int main(int argc, char *argv[]){
+
+   pthread_t tid;
+   pthread_attr_t attr;
+
+   //  init 初始化线程属性
+   int ret = pthread_attr_init(&attr);
+   if(ret != 0){
+        fprintf(stderr,"attr_init error: %s\n", strerror(ret));
+        exit(1);
+   }
+
+   // 设置线程属性为分离属性
+   ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+   if(ret != 0){
+        fprintf(stderr,"attr_setdetachstate error: %s\n", strerror(ret));
+        exit(1);
+   }
+
+
+    // 创建线程,并导入属性
+     ret = pthread_create(&tid, &attr, tfn, NULL);
+     if(ret != 0){
+        fprintf(stderr,"pthread_create error: %s\n", strerror(ret));
+        exit(1);
+     }
+
+    // 销毁线程属性所占资源 (在创建完线程之后 就可以销毁 )
+    ret = pthread_attr_destroy(&attr);
+    if(ret != 0){
+        fprintf(stderr,"attr_init error: %s\n", strerror(ret));
+        exit(1);
+    }
+
+   
+
+    ret = pthread_join(tid, NULL);  // 阻塞等待子线程死亡
+    if(ret != 0){ 
+        fprintf(stderr, "pthread_joinn error: %s\n", strerror(ret));    // 如果 join失败，说明线程分离属																					性设置成功 
+        exit(1);
+    }
+
+    printf("mian: pid: %d \t tid: %lu\n", getpid(), pthread_self());
+
+
+
+    
+}
+```
+
+![1688100349783](linux.assets/1688100349783.png)
+
+
+
+
+
+
+
+#### 线程同步
+
+协同步调，对公共区域数据按序访问，防止数据混乱 ，产生与时间有关的错误
+
+锁的使用
+
+* 建议锁，对公共数据进行保护，所有线程应该在访问公共数据 前先拿锁再访问，但锁本身不具备 强制性
+
+   
+
+#####   `mutex`（互斥锁/互斥量）
+
+###### 创建`mutex`一般步骤
+
+1. 创建锁：`pthread_mutex_t lock;`
+2. 动态初始化：`int pthread_mutex_init(ptgread_mutex_t *restrict mutex, const pthread_mutexattr_t *restrict attr);`
+   * `restrict`关键字：修饰指针变量，意即该指针指向的内存操作，必须由本指针来完成
+3. 加锁：`int pthread_mutex_lock(pthread_mutex_t *mutex);`
+4. 访问共享数据 (stdout)
+5. 解锁：`int  pthread_mutex_unlock(pthread_mutex_t *mutex)；`
+6. 销毁锁：`int pthread_mutex_destroy(pthread_mutex_t *mutex);`
+
+可以用静态初始化代替1，2步骤：`pthread_mutex_t mutex = PTHREAD_MUTEX_INTIALIZER;`
+
+###### 注意事项：
+
+* 尽量保证锁的粒度，越小越好  （访问共享数据前，加锁，访问结束 立即解锁）
+* 互斥锁：本质 是结构体，可以看作是整数 ，初值为1(`pthread_mutex_init()`调用成功)
+* 加锁： --操作，阻塞线程
+* 解锁：++操作，唤醒阻塞在锁上的线程
+* `try`锁：尝试加锁，成功--，失败回，同时设置错误号为`EBUSY`
+
+###### 死锁的产生：
+
+*  对一个锁反复lock
+* 两个线程各自持有一把锁，请求另一把
+* <img src="linux.assets/1688113805665.png" alt="1688113805665" style="zoom:50%;" />
+
+
+
+
+
+加锁	的小输出 程序 
+
+```c
+#include <pthread.h>
+
+//// 1。创建一把互斥锁，全局变量
+pthread_mutex_t mutex; 
+
+void *tfn(void *arg){
+    srand(time(NULL));
+    while(1){
+//// 3. 子线程加锁操作
+        int ret = pthread_mutex_lock(&mutex);        
+        printf("hello ");
+        sleep(rand()%3);
+        printf("world\n");
+//// 4. 子线程解锁操作
+        ret = pthread_mutex_unlock(&mutex);
+        sleep(rand()%3);
+    }
+
+    return NULL;
+}
+
+int main(int argv, char *argc){
+
+    pthread_t tid;
+    int ret;
+    srand(time(NULL));
+
+//// 2。在创建线程之前 对锁进行初始化
+    ret = pthread_mutex_init(&mutex, NULL);
+    // if(ret != 0);
+
+    ret = pthread_create(&tid, NULL, tfn, NULL);
+    // if(ret != 0);
+
+    while(1){
+//// 3。父线程加锁操作
+        ret = pthread_mutex_lock(&mutex);
+        printf("HELLO ");
+        sleep(rand()%3);
+        printf("WORLD\n");
+//// 4. 父线程解锁操作
+        ret = pthread_mutex_unlock(&mutex);
+        sleep(rand()%3);
+    }    
+
+    ret = pthread_join(tid, NULL);
+    // if(ret != 0);
+
+//// 6。退出 之前 销毁锁
+    ret = pthread_mutex_destroy(&mutex);
+
+    return 0;
+}
+```
+
+加锁前：
+
+![1688110085477](linux.assets/1688110085477.png)
+
+加锁后：
+
+![1688111712638](linux.assets/1688111712638.png)
+
+
+
+
+
+##### 读写锁
+
+* 锁只有一把，以读方式验数据加锁 -> 读锁； 以写方式给数据加锁 -> 写锁
+
+* 读共享，写独占（相较于`Mutex`，当读线程多的时候，访问效率高）
+
+* 写锁优先级高（读锁、写锁并行阻塞，写锁优先级高）
+
+读写锁操作一般步骤如下 ：
+
+* `pthread_rwlock_t rwlock;`
+* `pthread_rwlock_init(&rwlock, NULL);`
+* `pthread_rwlock_rd/wrlock(&rwlock);    try`
+* `pthread_rwlock_unlock(&rwlock);`    
+* `pthread_rwlock_destroy(&rwlock);`
+
+ 读写锁demo
+
+```c
+#include <pthread.h>
+
+
+
+int counter; // 全局变量,多个线程共享
+pthread_rwlock_t rwlock;    // 全局的读写锁 
+
+void *th_read(void *arg){
+    int i = (int)arg;
+    while(1){
+        pthread_rwlock_rdlock(&rwlock);
+        printf("------read:i = %d tid = %lu  counter = %d\n", i, pthread_self(), counter);
+        pthread_rwlock_unlock(&rwlock);
+        usleep(2000);
+    }
+    return NULL;
+}
+
+void *th_write(void *arg){
+    int i = (int)arg;
+    int t;
+    while(1){
+        pthread_rwlock_wrlock(&rwlock);
+        t = counter;
+        usleep(1000);
+        printf("write  i = %d, tid = %lu,  counter = %d, ++counter = %d\n",i,pthread_self(), t, ++counter);
+        pthread_rwlock_unlock(&rwlock);
+        usleep(10000);
+    }
+
+    return 0;
+
+}
+
+int main(int argc, char *argv[]){
+    int i;
+    pthread_t tid[8];
+    int ret = pthread_rwlock_init(&rwlock, NULL);
+    
+    for(i = 0; i<3; i++){
+        pthread_create(&tid[i], NULL, th_write, (void *)i);
+    }
+
+    for(i = 0; i<5; i++){
+        pthread_create(&tid[i+3], NULL, th_read, (void *)i);
+    }
+
+    for(i = 0; i<8; i++){
+        pthread_join(tid[i], NULL);
+    }
+
+    pthread_rwlock_destroy(&rwlock);
+
+    return 0;
+}
+```
+
+
+
+<img src="linux.assets/1688118148789.png" alt="1688118148789" style="zoom:50%;" />
+
+
+
+##### 条件变量
+
+条件变量也是 实现线程同步的一种方式，但条件变量本身不是锁
+
+通常结合锁来使用
+
+###### 条件变量初始化：
+
+* 法一：动态初始化
+  * pthread_cond_t cont;
+  * pthread_cond_init(&cont, NULL);
+* 法二：静态初始化
+  * pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+
+
+
+![1688128088497](linux.assets/1688128088497.png )
+
+![1688129168933](linux.assets/1688129168933.png)
+
+ 
+
+`pthread_cond_singal();`：唤醒阻塞在每件变量上的至少一个线程
+
+`pthread_cond_broadcast();`：唤醒阻塞在条件变量上的所有线程
+
+
+
+##### 生产者消费者demo
+
+```c
+#include <pthread.h>
+
+struct msg{
+    int num;
+    struct msg *next;
+};
+
+struct msg *head;
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t has_data = PTHREAD_COND_INITIALIZER;
+
+void err_thread(int ret, char *str){
+    if(ret != 0){
+        fprintf(stderr, "%s:%s\n", str, strerror(ret)); // 这里的str不用解 引用吗
+        pthread_exit(NULL);
+    }
+}
+
+void *produser(void *arg){
+    int ret;
+    while(1){
+        struct msg *node = malloc(sizeof(struct msg));
+        node->num = rand()%1000 + 1;    // 生产数据 
+        ret = pthread_mutex_lock(&mutex);   // 加锁互斥量
+        if(ret != 0){
+            err_thread(ret, "produser_mutex_lock");
+        }
+
+        node->next = head;      // 写进公共区域
+        head = node;    // 链表 头插法
+
+        ret = pthread_mutex_unlock(&mutex); // 解锁互斥量
+        if(ret != 0){
+            err_thread(ret, "produser_mutex_unlock");
+        }
+
+        printf("produser %d\n", node->num);
+        pthread_cond_signal(&has_data);  // 唤醒阻塞在条件has_data下的线程
+        sleep(rand()%3);
+    }
+}
+
+void *consumer(void *arg){
+    int ret;
+    struct msg *node;
+    while(1){
+        ret = pthread_mutex_lock(&mutex);   // 加锁互斥量
+        if(ret != 0){
+            err_thread(ret,"mutex_lock");
+        }
+
+        // *while适用于多消费者的情况*，因为可以会阻塞在锁上
+        while(head == NULL){
+            pthread_cond_wait(&has_data, &mutex);   // 阻塞等待条件变量满足并解锁，函数 返回时重新加锁
+        }
+
+        node = head;
+        head = node->next;
+
+
+        printf("---conseumer:%d\n",node->num);
+        ret = pthread_mutex_unlock(&mutex); // 解锁
+        if(ret != 0){
+            err_thread(ret, "comuser_unlock");
+        }
+
+
+        free(node);
+        sleep(rand()%2);
+    }
   
+    return NULL;
+
+}
+
+int main(int argc, char *argv[]){ // 这里为什么要加[]
+
+    int ret;
+    pthread_t pid,cid;
+    srand(time(NULL));
+
+    ret = pthread_create(&pid, NULL, produser, NULL);
+    if(ret != 0){
+        err_thread(ret, "pthread_create_produser");
+    }
+
+    ret = pthread_create(&cid, NULL, consumer, NULL);
+    if(ret != 0){
+        err_thread(ret, "pthread_create_consumer");
+    }
+
+    pthread_join(pid,NULL);
+    pthread_join(cid,NULL);
+
+    return 0;
+}
+```
+
+while应对多消费者，阻塞在锁上的情况
+
+<img src="linux.assets/1688134742109.png" alt="1688134742109" style="zoom:50%;" />
+
+
+
+
+
+
+
+
+
+## 信号量semapore
+
+用于线程、进程之间的同步
+
+相当于初始化值 为N的互斥量, N值表示可以同时访问共享数据区的线程数
+
+函数 ：
+
+* sem_t sem; 定义类型
+* int sem_init(sem_t *sem, int pshared, unsigned int value);
+  * sem：信号量
+  * pshared：0表示用于线程间同步，1表示用于进程间同步
+  * value：N值 ， 指定同时访问的进程/线程数
+* sem_destroy();
+* sem_wait(); 一次调用，做一次`--`操作，当信号量为0时再次调用会阻塞，类似：pthread_mutex_lock
+* sem_post(); 一次调用，做一次`++`操作，当信号量为N时再次调用会阻塞，类似：pthread_mutex_unlock
+
+
+
+用信号量实现生产者消费者模型demo 
